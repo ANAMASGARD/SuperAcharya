@@ -1,39 +1,58 @@
-@import "@fontsource-variable/inter";
+@import "@fontsource/archivo-black";
+@import "@fontsource/space-grotesk";
 
 @import "tailwindcss";
 @import "@agent-native/toolkit/styles.css";
 
 @source "./**/*.{ts,tsx}";
 
+@theme inline {
+  --font-head: "Archivo Black", sans-serif;
+  --font-sans: "Space Grotesk", sans-serif;
+
+  --shadow-xs: 1px 1px 0 0 hsl(var(--border));
+  --shadow-sm: 2px 2px 0 0 hsl(var(--border));
+  --shadow: 3px 3px 0 0 hsl(var(--border));
+  --shadow-md: 4px 4px 0 0 hsl(var(--border));
+  --shadow-lg: 6px 6px 0 0 hsl(var(--border));
+  --shadow-xl: 10px 10px 0 1px hsl(var(--border));
+  --shadow-2xl: 16px 16px 0 1px hsl(var(--border));
+
+  --color-primary-hover: hsl(var(--primary-hover));
+  --color-secondary-hover: hsl(var(--secondary-hover));
+}
+
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 10%;
+  --radius: 0;
+  --background: 42 100% 95%;
+  --foreground: 0 0% 0%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
+  --card-foreground: 0 0% 0%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --primary: 0 0% 15%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 95%;
-  --secondary-foreground: 0 0% 15%;
-  --muted: 0 0% 95%;
-  --muted-foreground: 0 0% 43%;
-  --accent: 0 0% 95%;
-  --accent-foreground: 0 0% 15%;
-  --destructive: 0 91% 71%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 0 0% 40%;
-  --radius: 0.5rem;
-  --sidebar-background: 0 0% 97%;
-  --sidebar-foreground: 0 0% 43%;
-  --sidebar-primary: 0 0% 15%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 0 0% 95%;
-  --sidebar-accent-foreground: 0 0% 15%;
-  --sidebar-border: 0 0% 90%;
-  --sidebar-ring: 0 0% 40%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 47 100% 67%;
+  --primary-hover: 47 100% 59%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 0%;
+  --secondary-hover: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 39 38% 89%;
+  --muted-foreground: 34 11% 44%;
+  --accent: 45 100% 82%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 354 78% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0%;
+  --input: 0 0% 100%;
+  --ring: 0 0% 0%;
+  --sidebar-background: 45 100% 82%;
+  --sidebar-foreground: 34 11% 44%;
+  --sidebar-primary: 47 100% 67%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 39 38% 89%;
+  --sidebar-accent-foreground: 0 0% 0%;
+  --sidebar-border: 0 0% 0%;
+  --sidebar-ring: 0 0% 0%;
   --chat-sidebar-width: 17.5rem;
   --chat-sidebar-content-inset: 0.5rem;
   --chat-sidebar-row-padding: 0.75rem;
@@ -229,41 +248,50 @@
 }
 
 .dark {
-  --background: 0 0% 13%;
-  --foreground: 0 0% 90%;
-  --card: 0 0% 16.47%;
-  --card-foreground: 0 0% 90%;
-  --popover: 0 0% 15%;
-  --popover-foreground: 0 0% 90%;
-  --primary: 0 0% 75%;
-  --primary-foreground: 0 0% 10%;
-  --secondary: 0 0% 18%;
-  --secondary-foreground: 0 0% 90%;
-  --muted: 0 0% 16%;
-  --muted-foreground: 0 0% 60%;
-  --accent: 0 0% 18%;
-  --accent-foreground: 0 0% 90%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-  --border: 0 0% 24%;
-  --input: 0 0% 24%;
-  --ring: 0 0% 60%;
-  --radius: 0.5rem;
-  --sidebar-background: 0 0% 10%;
-  --sidebar-foreground: 0 0% 60%;
-  --sidebar-primary: 0 0% 75%;
-  --sidebar-primary-foreground: 0 0% 10%;
-  --sidebar-accent: 0 0% 16%;
-  --sidebar-accent-foreground: 0 0% 90%;
-  --sidebar-border: 0 0% 20%;
-  --sidebar-ring: 0 0% 60%;
+  --background: 40 9% 9%;
+  --foreground: 40 33% 93%;
+  --card: 40 7% 14%;
+  --card-foreground: 40 33% 93%;
+  --popover: 40 7% 14%;
+  --popover-foreground: 40 33% 93%;
+  --primary: 47 100% 67%;
+  --primary-hover: 47 100% 59%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 32 8% 20%;
+  --secondary-hover: 32 8% 26%;
+  --secondary-foreground: 40 33% 93%;
+  --muted: 40 10% 16%;
+  --muted-foreground: 40 12% 66%;
+  --accent: 37 11% 19%;
+  --accent-foreground: 40 33% 93%;
+  --destructive: 0 100% 71%;
+  --destructive-foreground: 40 9% 9%;
+  --border: 0 0% 0%;
+  --input: 40 7% 14%;
+  --ring: 47 100% 67%;
+  --radius: 0;
+  --sidebar-background: 37 11% 19%;
+  --sidebar-foreground: 40 12% 66%;
+  --sidebar-primary: 47 100% 67%;
+  --sidebar-primary-foreground: 0 0% 0%;
+  --sidebar-accent: 40 10% 16%;
+  --sidebar-accent-foreground: 40 33% 93%;
+  --sidebar-border: 0 0% 0%;
+  --sidebar-ring: 47 100% 67%;
 }
 
 @layer base {
   body {
-    @apply bg-background text-foreground;
-    font-family: "Inter Variable", "Inter", sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    @apply bg-background font-sans text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-head;
   }
 }
 

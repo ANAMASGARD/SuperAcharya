@@ -6,15 +6,19 @@
   "tailwind": {
     "config": "",
     "css": "app/global.css",
-    "baseColor": "slate",
+    "baseColor": "neutral",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "app/components",
+    "utils": "app/lib/utils",
+    "ui": "app/components/ui",
+    "lib": "app/lib",
+    "hooks": "app/hooks"
+  },
+  "registries": {
+    "@neobrutalism": "https://neobrutalism.com/r/radix/{name}.json",
+    "@neobrutalism-base": "https://neobrutalism.com/r/base/{name}.json"
   }
 }
