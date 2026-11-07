@@ -50,7 +50,7 @@ export function skeletonLayoutForPath(
     pathname.length > 1 && pathname.endsWith("/")
       ? pathname.slice(0, -1)
       : pathname;
-  if (path === HOME_PATH) return "home";
+  if (path === "/" || path === HOME_PATH) return "assistant";
   if (path === NEW_CHAT_PATH) return "assistant-new";
   return "assistant";
 }

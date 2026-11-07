@@ -5,8 +5,8 @@ export default defineAppConfig({
     // This name appears in transactional emails. Change it to your product name.
     name: "Superacharya",
     // The source template keeps a renamed app from inheriting first-party email branding.
-    sourceTemplate: "chat",
-    // Keep the template's authenticated entry explicit after renaming the app.
+    sourceTemplate: "app",
+    // Authenticated entry after sign-in (not the Agent-Native chat template).
     homePath: "/home",
     // Optional: use your own absolute HTTPS logo URL in transactional emails.
     // logoUrl: "https://example.com/logo.png",

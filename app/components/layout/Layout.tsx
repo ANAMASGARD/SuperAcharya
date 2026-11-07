@@ -5,11 +5,6 @@ import {
   useHeaderTitle,
 } from "@agent-native/toolkit/app-shell/header-actions";
 import {
-  isAgentChatHomeHandoffActive,
-  useAgentChatHomeHandoff,
-  useAgentChatHomeHandoffLinks,
-} from "@agent-native/toolkit/app/chat/agentkit-chat/rail";
-import {
   RealtimeVoiceModeProvider,
   useRealtimeVoiceModeOptional,
 } from "@agent-native/toolkit/app/chat/composer";
@@ -92,18 +87,6 @@ function LayoutShell({ children }: LayoutProps) {
   // Settings brings its own navigation, header, and agent toggle, so it
   // renders full width.
   const settingsOwnsChrome = isSettingsPathname(location.pathname);
-  const chatHomeHandoffActive = useAgentChatHomeHandoff({
-    storageKey: "chat",
-    activePath: location.pathname,
-    enabled: !isChatRoute,
-  });
-  const chatHomeHandoffPending = isAgentChatHomeHandoffActive("chat");
-  useAgentChatHomeHandoffLinks({
-    storageKey: "chat",
-    isChatPath: isChatPathname,
-    requireActiveHandoff: true,
-  });
-
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [location.pathname]);
@@ -209,8 +192,8 @@ function LayoutShell({ children }: LayoutProps) {
           </div>
         ) : (
           <AgentInspector
-            chatHomeHandoffActive={chatHomeHandoffActive}
-            chatHomeHandoffPending={chatHomeHandoffPending}
+            chatHomeHandoffActive={false}
+            chatHomeHandoffPending={false}
           >
             {contentFrame}
           </AgentInspector>

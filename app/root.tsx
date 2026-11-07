@@ -5,8 +5,11 @@ import { createAgentNativeQueryClient } from "@agent-native/core/client/hooks";
 import { getLocaleInitScript, useT } from "@agent-native/core/client/i18n";
 import { getThemeInitScript } from "@agent-native/core/client/theme";
 import { AppProviders } from "@agent-native/toolkit/app/providers";
-import { useCommandMenuShortcut } from "@agent-native/toolkit/app/shared";
-import { CommandMenu } from "@agent-native/toolkit/app/shared";
+import {
+  ClientOnly,
+  CommandMenu,
+  useCommandMenuShortcut,
+} from "@agent-native/toolkit/app/shared";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
 import { useCallback, useState } from "react";
@@ -32,6 +35,10 @@ import {
   skeletonLayoutForPath,
   threadIdFromPath,
 } from "@/lib/chat-paths";
+import { isPublicLandingPath, LANDING_PATH } from "@/lib/public-routes";
+
+/** Must match `publicPaths` / `workspaceAppPublicPaths` in `server/plugins/auth.ts`. */
+const PUBLIC_PATHS = [LANDING_PATH] as const;
 import { TAB_ID } from "@/lib/tab-id";
 
 import { i18nCatalog } from "./i18n";
@@ -42,7 +49,7 @@ configureTracking({
   getDefaultProps: (_name, properties) => ({
     ...properties,
     app: "superacharya",
-    template: "chat",
+    template: "superacharya",
   }),
 });
 
@@ -121,10 +128,12 @@ function AppContent() {
   const navigate = useNavigate();
   const t = useT();
   const location = useLocation();
+  const isLanding = isPublicLandingPath(location.pathname);
   const isChatThread = threadIdFromPath(location.pathname) !== null;
   useCommandMenuShortcut(useCallback(() => setCmdkOpen(true), []));
   return (
     <>
+      {isLanding ? null : (
       <CommandMenu
         open={cmdkOpen}
         onOpenChange={setCmdkOpen}
@@ -168,9 +177,14 @@ function AppContent() {
           <ThemeToggleItem />
         </CommandMenu.Group>
       </CommandMenu>
-      <AppLayout>
+      )}
+      {isLanding ? (
         <Outlet />
-      </AppLayout>
+      ) : (
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      )}
     </>
   );
 }
@@ -180,14 +194,20 @@ export default function Root() {
   // The path, not the visitor, picks the shell, so the SSR shell stays one
   // cached page per URL.
   const { pathname } = useLocation();
+  const isPublicPath = PUBLIC_PATHS.includes(
+    pathname as (typeof PUBLIC_PATHS)[number],
+  );
   return (
     <AppToolkitProvider>
       <AppProviders
         queryClient={queryClient}
+        isPublicPath={isPublicPath}
         skeletonLayout={skeletonLayoutForPath(pathname)}
         i18n={{ catalog: i18nCatalog }}
       >
-        <DbSyncSetup />
+        <ClientOnly>
+          <DbSyncSetup />
+        </ClientOnly>
         <AppContent />
       </AppProviders>
     </AppToolkitProvider>

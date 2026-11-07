@@ -41,3 +41,7 @@ learnings.md
 .vercel/
 .agent-native/
 data/*.lock
+
+# clerk configuration (can include secrets)
+/.clerk/
+.clerk/

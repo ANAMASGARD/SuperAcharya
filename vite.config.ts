@@ -16,6 +16,7 @@ export default defineConfig({
       "app/routes/{home,chat.$threadId}.tsx",
     ],
   },
+
   plugins: [
     ...reactRouterPlugins(),
     ...agentNativePlugins({
