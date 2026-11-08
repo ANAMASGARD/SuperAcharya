@@ -45,3 +45,4 @@ data/*.lock
 # clerk configuration (can include secrets)
 /.clerk/
 .clerk/
+.neon

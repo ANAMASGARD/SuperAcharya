@@ -1,96 +1,76 @@
 # Super Acharya — project memory
 
-Last updated: 2026-11-07 (auth + landing handoff).
-
 ## Project direction
 
-- **Product:** Super Acharya — whiteboard-first, real-time, multimodal AI teacher (hackathon: Builder.io Agent-Native 2026).
-- **Framework (locked):** Agent-Native standalone — React 19 + React Router 8 + Vite + Nitro/h3. **No Next.js. No Clerk.**
-- **Stack:** `@agent-native/core` / `toolkit` / `agentkit` **0.226.0**, Drizzle over Postgres/PGlite; production DB target **Neon** via `DATABASE_URL`.
-- **Authority:** `AGENTS.md` = vision/rules; this file = what is actually done. Prefer reading code over old notes.
+- **Product:** Super Acharya — whiteboard-first, real-time, multimodal AI teacher (Builder.io Agent-Native 2026).
+- **Framework:** Agent-Native standalone — React 19, React Router 8, Vite, Nitro/h3. No Next.js. No Clerk.
+- **Stack:** `@agent-native/core` / `toolkit` / `agentkit` 0.226.0, Drizzle over Postgres/PGlite; production DB via Neon `DATABASE_URL`.
+- **Authority:** `AGENTS.md` = vision/rules; this file = what is implemented and verified. Read the code to confirm behavior.
 
-## Completed — authentication & app shell (2026-11-07)
+## Authentication
 
-### Auth (Better Auth via Agent-Native)
+- Framework only: `createToolkitAuthPlugin` in `server/plugins/auth.ts`. No parallel `/api/auth` or second auth product.
+- **Email/password** and magic link when outbound email is configured.
+- **Google:** framework flow `/_agent-native/google/auth-url` → `/_agent-native/google/callback` (`GOOGLE_SIGN_IN_*` in env).
+- **Microsoft & Facebook:** Better Auth `POST /_agent-native/auth/ba/sign-in/social`; credentials in `server/lib/better-auth-social-providers.ts` (`MICROSOFT_*`, `FACEBOOK_*`).
+- **Sign-in UI:** `/auth/sign-in`, `/auth/sign-up` — Google, Microsoft (four-colour icon), Facebook. Apple removed from the screen.
+- **Better Auth bootstrap fix:** `server/plugins/auth.ts` calls `getBetterAuth({ socialProviders })` before the framework session route, so Facebook/Microsoft are not lost to a first empty singleton (`PROVIDER_NOT_FOUND`).
+- **Local env:** `.env.example` documents redirect URIs. Set `BETTER_AUTH_URL=http://localhost:8080` in `.env.local` so Better Auth callbacks match `agent-native dev` (port 8080). Use `AGENT_NATIVE_DISABLE_AUTO_DEV_ACCOUNT=1` for real sign-in on localhost.
+- **Provider consoles (local dev):** register these redirect URIs exactly:
+  - Google: `http://localhost:8080/_agent-native/google/callback`
+  - Facebook: `http://localhost:8080/_agent-native/auth/ba/callback/facebook`
+  - Microsoft: `http://localhost:8080/_agent-native/auth/ba/callback/microsoft`
+- Google `redirect_uri_mismatch` is fixed in Google Cloud Console, not in app code. `gcloud` cannot edit console OAuth clients.
 
-- **Done.** Framework auth only: `createToolkitAuthPlugin` in `server/plugins/auth.ts`.
-- **Do not** add standalone `auth.ts`, `/api/auth/*`, or a second auth product (Clerk was tried then fully removed).
-- **Methods:**
-  - Email/password + magic link (framework defaults when email is ready).
-  - Google: `GOOGLE_SIGN_IN_CLIENT_ID` / `GOOGLE_SIGN_IN_CLIENT_SECRET`.
-  - GitHub: `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
-  - Discord / LinkedIn: `server/lib/better-auth-social-providers.ts` → `betterAuth.socialProviders`; UI extras in `server/lib/render-sign-in-page.ts` (POST to `/_agent-native/auth/ba/sign-in/social`).
-- **Env:** Documented in `.env.example`. Local secrets live in `.env.local` (gitignored). Use `AGENT_NATIVE_DISABLE_AUTO_DEV_ACCOUNT=1` so localhost does not auto-sign in as `dev@local.test`.
-- **Doctor:** Discord/LinkedIn `process.env` reads use `// guard:allow-env-credential — …`. `pnpm agent-native:doctor` is clean.
+## Routes and landing
 
-### Public landing → sign-in → protected app
+- **`/`** — public video hero landing (`app/components/landing/LandingPage.tsx`). Signed-in users can stay on `/` (no auto-bounce to the classroom).
+- **Landing auth redirect disabled:** `app/root.tsx` sets `window.__agentNativeAuthRedirectStarted` on `/` so the framework’s injected `data-agent-native-auth-redirect` script does not send signed-in visitors away from the marketing page.
+- **Header (right):** signed-out → “Sign in” → `/auth/sign-in`; signed-in → circular profile avatar (session `image` or initial) linking to the whiteboard.
+- **“Get started”** → `/whiteboard` for everyone (session required inside the app shell on that route).
+- **`/whiteboard`** — classroom placeholder (`BOARD_PATH` = `/whiteboard` in `app/lib/chat-paths.ts`). `app.homePath` in `server/plugins/agent-native-email-branding.ts` matches `/whiteboard`.
+- **`/board`** — redirect to `/whiteboard` for old links.
+- **`/home`** — product cards; chat secondary in sidebar.
+- **Public paths:** `/`, `/auth/*` (`app/lib/public-routes.ts`, `server/plugins/auth.ts`). Other routes use the signed-in shell.
+- **Post-auth default** (no `?c=`): `resolveResumeHref` → `/whiteboard` (`app/lib/auth-client.ts`).
+- **`DbSyncSetup`:** wrapped in `<ClientOnly>` on public routes (`app/root.tsx`).
 
-Desired flow (implemented):
+## Data
 
-1. **`/`** — public marketing landing (`app/components/landing/LandingPage.tsx`); no app sidebar.
-2. **Sign in / Sign up / Get started** — sheet (`AuthDialog`) with Better Auth embed + fallback “Continue to sign in”.
-3. After session — redirect to **`/home`** (`homePath` in `server/plugins/agent-native-email-branding.ts`).
-4. All other app routes require session (`RequireSession` via `AppProviders`); only `/` is public (`publicPaths` / `workspaceAppPublicPaths` + `isPublicPath` / `PUBLIC_PATHS` in `app/root.tsx`).
+- Neon linked; `DATABASE_URL` / `DATABASE_URL_UNPOOLED` in `.env.local` (gitignored). No app-owned lesson/whiteboard tables yet.
 
-SSR fix: `DbSyncSetup` wrapped in `<ClientOnly>` so public `/` does not 500 with `useLocation() outside <Router>` during SSR.
-
-### Chat template removed as primary UX
-
-- Removed AgentKit “Get started / Ask anything” home and sidebar thread rail as the product face.
-- **`/home`** — product home cards (whiteboard coming soon; optional Open chat).
-- **`/chat`** — still available for agent/hackathon; secondary in sidebar (Home + Chat).
-- Branding: `sourceTemplate: "app"` (not `"chat"`).
-
-### Design system (earlier same day)
-
-- Neobrutalism tokens in `app/global.css`; Archivo Black + Space Grotesk.
-- Local UI: button, card, input, label; other controls still toolkit re-exports.
-
-## Data / Neon (decision, not provisioned in repo)
-
-- Agent-Native **already ships Drizzle + Postgres**. Local = PGlite; production needs **`DATABASE_URL`** (Neon recommended).
-- No app-owned lesson/board tables yet — add Drizzle schema when building `/board`. Large scenes → file storage + SQL references, not huge base64 in rows.
-- `pnpm run build` may still **print** missing production `DATABASE_URL`; build still completes. Set Neon URL on the host before real deploy — **do not commit secrets**.
-
-## Verification (latest)
+## Verification (last run)
 
 | Check | Result |
 |--------|--------|
-| `pnpm typecheck` | Passed |
+| `pnpm run typecheck` | Passed |
+| `pnpm test` | 19/19 passed |
 | `pnpm agent-native:doctor` | Clean |
-| `pnpm run build` | Complete (exit 0); advisory missing `DATABASE_URL` for production |
-| Browser | Landing SSR 200 on `/`; auth sheet + protected `/home` exercised in session |
+| `pnpm run build` | Complete (exit 0) |
+
+Social OAuth: Facebook/Microsoft social endpoints return authorize URLs after auth-plugin fix; full browser login depends on provider console redirect URIs. Google same.
 
 ## Important files
 
 | Area | Path |
 |------|------|
-| Auth plugin | `server/plugins/auth.ts` |
-| Discord/LinkedIn providers | `server/lib/better-auth-social-providers.ts` |
-| Sign-in page extras | `server/lib/render-sign-in-page.ts` |
-| Public landing | `app/components/landing/*`, `app/routes/_index.tsx` |
-| Public path helper | `app/lib/public-routes.ts` |
-| Root shell / ClientOnly | `app/root.tsx` |
-| Authenticated home | `app/components/home/HomePage.tsx`, `app/routes/home.tsx` |
-| Sidebar | `app/components/layout/Sidebar.tsx` |
+| Auth plugin + Better Auth preload | `server/plugins/auth.ts` |
+| Extra social providers | `server/lib/better-auth-social-providers.ts` |
+| Sign-in entry forwarder | `server/lib/sign-in-entry-html.ts` |
+| Auth screens | `app/components/auth/*`, `app/lib/auth-client.ts` |
+| Landing | `app/components/landing/LandingPage.tsx` |
+| Whiteboard route | `app/routes/whiteboard.tsx`, `app/components/board/BoardPage.tsx` |
+| Paths / public routes | `app/lib/chat-paths.ts`, `app/lib/public-routes.ts` |
+| Root shell | `app/root.tsx` |
 | Env docs | `.env.example` |
-| Product rules | `AGENTS.md` |
 
-## Not done (next concrete steps)
+## Not done yet
 
-1. Set Neon `DATABASE_URL` in deploy env when hosting.
-2. Wire real OAuth client IDs/secrets; confirm provider callback URLs under `/_agent-native/auth/ba/callback/<provider>`.
-3. Install Excalidraw + `/board` route; set `homePath` to board when ready.
-4. Lesson ops actions, LangGraph teaching pipeline, STT/TTS, interruption IDs.
-5. Optional: `docs/super-acharya-feasibility.md` if still missing.
+- Register localhost (and production) OAuth redirect URIs at Google, Meta, and Microsoft Entra; smoke-test each provider end to end.
+- Excalidraw on the whiteboard, lesson ops, LangGraph teaching workflow, STT/TTS, interruption handling.
+- Whiteboard link in `app/components/layout/Sidebar.tsx` (route exists; sidebar may still emphasize Home/Chat only).
+- Optional: email verification / forgot-password flows with a real mail provider.
 
-## Handoff for the next agent
+## Git policy
 
-- Prefer **Better Auth + public `/` + protected `/home`** over reintroducing Clerk or chat-as-home.
-- Keep Discord/LinkedIn env reads behind `guard:allow-env-credential`.
-- Do not remove `<ClientOnly>` around `DbSyncSetup` while `/` is public.
-- Neon + Drizzle is the correct persistence path for lessons/board metadata.
-
-## Git
-
-- Work stays on **`main`**. Commits only when the user asks (this session: auth/landing commit authorized).
+- Work on `main`. Commits only when the user asks. Do not commit `.env.local` or secrets.

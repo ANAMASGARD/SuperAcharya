@@ -309,3 +309,149 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.34);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIQUID GLASS EFFECT - Landing hero
+   ═══════════════════════════════════════════════════════════════════════════ */
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0.15) 20%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0.15) 80%,
+    rgba(255, 255, 255, 0.45) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-rise {
+  animation: fade-rise 0.8s ease-out both;
+}
+
+.animate-fade-rise-delay {
+  animation: fade-rise 0.8s ease-out 0.2s both;
+}
+
+.animate-fade-rise-delay-2 {
+  animation: fade-rise 0.8s ease-out 0.4s both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-rise,
+  .animate-fade-rise-delay,
+  .animate-fade-rise-delay-2 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AUTH SCREENS (/auth/sign-in, /auth/sign-up)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Always the light "paper" theme: the neo-brutalist hard black borders and
+   shadows disappear on the dark theme's near-black background. */
+.auth-screen {
+  color-scheme: light;
+  --background: 42 100% 95%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 0%;
+  --primary: 47 100% 67%;
+  --primary-hover: 47 100% 59%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 0%;
+  --secondary-hover: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 39 38% 89%;
+  --muted-foreground: 34 11% 36%;
+  --accent: 45 100% 82%;
+  --accent-foreground: 0 0% 0%;
+  --destructive: 354 78% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 0%;
+  --input: 0 0% 100%;
+  --ring: 0 0% 0%;
+
+  /* Sizes that follow the window height, so the form fits without scrolling
+     from a short laptop window up to a tall monitor. */
+  --auth-control: clamp(2.25rem, 5.6vh, 2.75rem);
+  --auth-gap: clamp(0.5rem, 1.7vh, 0.9rem);
+  --auth-title: clamp(1.75rem, 4.8vh, 2.5rem);
+}
+
+/* The shared Button and Input draw their focus ring in brand yellow, which
+   disappears on the cream page and on the yellow primary button. Unlayered, so
+   it wins over the layered utility classes. */
+.auth-screen :focus-visible {
+  outline: 3px solid #000;
+  outline-offset: 3px;
+}
+
+.auth-stage {
+  background-image: radial-gradient(
+    hsl(0 0% 0% / 0.2) 1.5px,
+    transparent 1.6px
+  );
+  background-size: 24px 24px;
+}
+
+/* The board "writes" each line: a chalk-white cover slides away to the left. */
+.sa-reveal {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: sa-reveal 0.9s steps(14, end) both;
+}
+
+@keyframes sa-reveal {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sa-reveal {
+    animation: none;
+    transform: scaleX(0);
+  }
+}

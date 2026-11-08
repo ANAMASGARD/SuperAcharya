@@ -11,6 +11,7 @@ import {
   NEW_CHAT_PATH,
   threadIdFromPath,
 } from "@/lib/chat-paths";
+import { isAuthScreenPath } from "@/lib/public-routes";
 import { TAB_ID } from "@/lib/tab-id";
 
 export interface NavigationState {
@@ -74,6 +75,7 @@ export function navigationStateForPath(pathname: string): NavigationState {
 
 function viewForPath(pathname: string): string {
   if (pathname === "/" || pathname === "") return "landing";
+  if (isAuthScreenPath(pathname)) return "auth";
   if (isChatPathname(pathname)) return "chat";
   if (pathname === HOME_PATH) return "home";
   if (pathname.startsWith("/database")) return "database";

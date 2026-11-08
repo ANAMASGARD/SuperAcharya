@@ -35,10 +35,7 @@ import {
   skeletonLayoutForPath,
   threadIdFromPath,
 } from "@/lib/chat-paths";
-import { isPublicLandingPath, LANDING_PATH } from "@/lib/public-routes";
-
-/** Must match `publicPaths` / `workspaceAppPublicPaths` in `server/plugins/auth.ts`. */
-const PUBLIC_PATHS = [LANDING_PATH] as const;
+import { isPublicRoutePath } from "@/lib/public-routes";
 import { TAB_ID } from "@/lib/tab-id";
 
 import { i18nCatalog } from "./i18n";
@@ -65,6 +62,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
+        {/* The framework appends a script that sends any signed-in visitor from
+            `/` to the classroom. This flag runs first and leaves the landing
+            page in place; Get started still opens the whiteboard. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'if(location.pathname==="/"||location.pathname===""){window.__agentNativeAuthRedirectStarted=true}',
+          }}
+        />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content"
@@ -128,7 +134,8 @@ function AppContent() {
   const navigate = useNavigate();
   const t = useT();
   const location = useLocation();
-  const isLanding = isPublicLandingPath(location.pathname);
+  // Landing and the sign-in / sign-up screens render without the app shell.
+  const isLanding = isPublicRoutePath(location.pathname);
   const isChatThread = threadIdFromPath(location.pathname) !== null;
   useCommandMenuShortcut(useCallback(() => setCmdkOpen(true), []));
   return (
@@ -194,9 +201,8 @@ export default function Root() {
   // The path, not the visitor, picks the shell, so the SSR shell stays one
   // cached page per URL.
   const { pathname } = useLocation();
-  const isPublicPath = PUBLIC_PATHS.includes(
-    pathname as (typeof PUBLIC_PATHS)[number],
-  );
+  // Must match `publicPaths` / `workspaceAppPublicPaths` in `server/plugins/auth.ts`.
+  const isPublicPath = isPublicRoutePath(pathname);
   return (
     <AppToolkitProvider>
       <AppProviders
@@ -205,9 +211,13 @@ export default function Root() {
         skeletonLayout={skeletonLayoutForPath(pathname)}
         i18n={{ catalog: i18nCatalog }}
       >
-        <ClientOnly>
-          <DbSyncSetup />
-        </ClientOnly>
+        {/* Live sync and agent navigation state need a session; a visitor on a
+            public route would only poll and collect 401s. */}
+        {isPublicPath ? null : (
+          <ClientOnly>
+            <DbSyncSetup />
+          </ClientOnly>
+        )}
         <AppContent />
       </AppProviders>
     </AppToolkitProvider>

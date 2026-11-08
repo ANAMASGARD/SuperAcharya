@@ -107,7 +107,7 @@ Use the local documentation and source-search commands from the starter guide. D
 
 ## 5. Application routes and teacher workflow
 
-Prefer `/board` as the authenticated classroom landing, with lesson-specific navigation following the installed router's conventions. Check existing routes before introducing or renaming paths. Set `app.homePath` through the supported app configuration and verify the post-login landing.
+Prefer `/whiteboard` as the authenticated classroom landing, with lesson-specific navigation following the installed router's conventions. Check existing routes before introducing or renaming paths. Set `app.homePath` through the supported app configuration and verify the post-login landing.
 
 Preserve shared sign-in, `/chat`, the supported sidebar, and AgentInspector. Make the classroom the primary experience without deleting the agent infrastructure. Reuse supported shell customization for a spacious board and compact teacher controls. Keep branding consistent as **Super Acharya**; do not rewrite `README.md` or `DESIGN.md` without a separate request.
 

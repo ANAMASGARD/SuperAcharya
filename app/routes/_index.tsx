@@ -2,7 +2,7 @@ import LandingPage from "@/components/landing/LandingPage";
 import { APP_TITLE } from "@/lib/app-config";
 
 const SEO_DESCRIPTION =
-  "Super Acharya — multimodal AI teaching on a shared whiteboard for students.";
+  "Super Acharya — a teaching assistant on a shared whiteboard that helps you learn concepts step by step, like a real teacher.";
 
 export function meta() {
   const title = `${APP_TITLE}`;

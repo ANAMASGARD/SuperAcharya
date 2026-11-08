@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { APP_TITLE } from "@/lib/app-config";
-import { NEW_CHAT_PATH } from "@/lib/chat-paths";
+import { BOARD_PATH, NEW_CHAT_PATH } from "@/lib/chat-paths";
 
 export default function HomePage() {
   return (
@@ -37,8 +37,8 @@ export default function HomePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button type="button" variant="secondary" disabled className="w-full">
-              Coming soon
+            <Button asChild variant="default" className="w-full">
+              <Link to={BOARD_PATH}>Open whiteboard</Link>
             </Button>
           </CardContent>
         </Card>
