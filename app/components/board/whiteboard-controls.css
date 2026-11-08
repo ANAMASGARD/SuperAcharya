@@ -1,0 +1,374 @@
+/* Presentation adapter for Excalidraw 0.18.1. Keep native controls and hit areas. */
+.whiteboard-editor {
+  background: #fff;
+  --board-yellow: hsl(var(--primary));
+  --board-red: hsl(var(--destructive));
+  --board-ink: #000;
+}
+
+.whiteboard-editor .excalidraw {
+  --color-primary: var(--board-yellow);
+  --color-primary-darker: #dbb526;
+  --color-primary-darkest: #000;
+  --color-primary-light: #fff2b3;
+  --color-surface-primary-container: var(--board-yellow);
+  --color-on-primary-container: #000;
+  --button-hover-bg: #fff2b3;
+  --button-active-border: #000;
+  --focus-highlight-color: var(--board-yellow);
+  --board-control-bg: #fff;
+  --board-control-fg: #000;
+}
+.whiteboard-editor .excalidraw:not(.theme--dark) {
+  --island-bg-color: #fff;
+  --color-surface-low: #fff;
+  --color-surface-mid: #fff;
+  --color-surface-high: #fff;
+}
+.whiteboard-editor .excalidraw.theme--dark {
+  --board-control-bg: #262626;
+  --board-control-fg: #fff;
+  --button-hover-bg: #45402a;
+}
+
+.whiteboard-editor
+  .excalidraw
+  :where(
+    .App-toolbar-container .ToolIcon__icon,
+    .main-menu-trigger,
+    .sidebar-trigger,
+    .help-icon,
+    .zoom-button,
+    .reset-zoom-button,
+    .undo-redo-buttons .ToolIcon__icon
+  ) {
+  box-sizing: border-box;
+  border: 2px solid var(--board-ink);
+  border-radius: 50%;
+  background: var(--board-control-bg);
+  color: var(--board-control-fg);
+  box-shadow: 2px 2px 0 var(--board-ink);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease;
+}
+.whiteboard-editor .excalidraw .App-toolbar-container .ToolIcon__icon svg {
+  color: inherit;
+}
+.whiteboard-editor
+  .excalidraw
+  .App-toolbar-container
+  .ToolIcon
+  :is(input:checked + .ToolIcon__icon, .ToolIcon__icon:active) {
+  background: var(--board-yellow);
+  color: #000;
+  border-width: 2px;
+}
+.whiteboard-editor
+  .excalidraw
+  :is(.App-toolbar-container .Island, .dropdown-menu-container, .sidebar) {
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+}
+.whiteboard-editor .excalidraw .App-toolbar-container .Island {
+  padding: 6px;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--board-yellow);
+  color: #000;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger svg {
+  visibility: hidden;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger::before,
+.whiteboard-editor .excalidraw .main-menu-trigger::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  pointer-events: none;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger::before {
+  box-shadow:
+    0 -6px 0 currentColor,
+    0 6px 0 currentColor;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger::after {
+  opacity: 0;
+}
+.whiteboard-editor .excalidraw .main-menu-trigger[aria-expanded="true"] {
+  background: var(--board-red);
+  color: #fff;
+}
+.whiteboard-editor
+  .excalidraw
+  .main-menu-trigger[aria-expanded="true"]::before {
+  box-shadow: none;
+  transform: rotate(45deg);
+}
+.whiteboard-editor .excalidraw .main-menu-trigger[aria-expanded="true"]::after {
+  opacity: 1;
+  transform: rotate(-45deg);
+}
+.whiteboard-editor
+  .excalidraw
+  :is(button:focus-visible, input:focus-visible + .ToolIcon__icon) {
+  outline: 3px solid var(--board-yellow);
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .whiteboard-editor
+    .excalidraw
+    :is(
+      .App-toolbar-container
+        .ToolIcon:not(:has(input:disabled))
+        .ToolIcon__icon,
+      .main-menu-trigger,
+      .sidebar-trigger,
+      .help-icon,
+      .zoom-button,
+      .reset-zoom-button,
+      .undo-redo-buttons button:not(:disabled) .ToolIcon__icon
+    ):hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 #000;
+  }
+}
+.whiteboard-editor
+  .excalidraw
+  :is(
+    .App-toolbar-container .ToolIcon__icon,
+    .main-menu-trigger,
+    .sidebar-trigger,
+    .help-icon,
+    .zoom-button,
+    .reset-zoom-button,
+    .undo-redo-buttons button:not(:disabled) .ToolIcon__icon
+  ):active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+.whiteboard-editor .excalidraw :is(button:disabled, [aria-disabled="true"]) {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .excalidraw :is(button, .ToolIcon__icon) {
+    transition: none;
+    transform: none !important;
+  }
+}
+
+/* Footer controls retain their original joined, rounded rectangular layout. */
+.whiteboard-editor
+  .excalidraw
+  :is(.zoom-button, .reset-zoom-button, .undo-redo-buttons .ToolIcon__icon) {
+  border-radius: 8px;
+}
+.whiteboard-editor .excalidraw .sidebar-trigger {
+  border-radius: 999px;
+}
+.whiteboard-editor .excalidraw .App-toolbar-container .ToolIcon {
+  border-radius: 50%;
+}
+
+/* Only the drawing menu: keep font menus and library popovers independent. */
+.whiteboard-editor .excalidraw .dropdown-menu:has(.board-menu-action) {
+  --default-border-color: var(--board-ink);
+  --ui-font: "Space Grotesk", sans-serif;
+  /* The app accent becomes charcoal in dark mode; menu highlights must stay
+     pale yellow because their foreground is deliberately black. */
+  --board-menu-highlight: #fff2b3;
+  font-family: var(--ui-font);
+  max-width: calc(100vw - 24px);
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-container {
+  padding: 10px;
+  border: 2px solid var(--board-ink);
+  border-radius: 16px;
+  background: var(--board-control-bg);
+  box-shadow: 5px 5px 0 var(--board-ink);
+  scrollbar-width: thin;
+  scrollbar-color: var(--board-ink) var(--board-control-bg);
+  overscroll-behavior: contain;
+  max-height: calc(100dvh - 100px);
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item {
+  min-height: 44px;
+  height: auto;
+  padding: 8px 10px;
+  margin: 3px 0;
+  width: 100%;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  font-weight: 600;
+  color: var(--board-control-fg);
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .board-menu-primary {
+  background: var(--board-yellow);
+  border-color: var(--board-ink);
+  color: var(--board-ink);
+  box-shadow: 2px 2px 0 var(--board-ink);
+  margin-bottom: 8px;
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item__icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 28px;
+  height: 28px;
+  border: 1.5px solid var(--board-ink);
+  border-radius: 50%;
+  background: var(--board-yellow);
+  color: var(--board-ink);
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item__text {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.3;
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item__shortcut {
+  flex-shrink: 0;
+  padding: 3px 5px;
+  border: 1px solid var(--board-control-fg);
+  border-radius: 5px;
+  color: var(--board-control-fg);
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item:focus-visible {
+  outline: 2px solid var(--board-control-fg);
+  outline-offset: -2px;
+  background: var(--board-menu-highlight);
+  color: var(--board-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .whiteboard-editor
+    .excalidraw
+    .dropdown-menu:has(.board-menu-action)
+    .dropdown-menu-item:not(:disabled):hover {
+    background: var(--board-menu-highlight);
+    border-color: var(--board-ink);
+    color: var(--board-ink);
+    box-shadow: 2px 2px 0 var(--board-ink);
+    transform: translate(-1px, -1px);
+  }
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  .dropdown-menu-item:not(:disabled):active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+  background: var(--board-yellow);
+  border-color: var(--board-ink);
+  color: var(--board-ink);
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  :is(
+    .dropdown-menu-item:hover,
+    .dropdown-menu-item:focus-visible,
+    .board-menu-primary
+  )
+  .dropdown-menu-item__shortcut {
+  color: var(--board-ink);
+  border-color: var(--board-ink);
+}
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:has(.board-menu-action)
+  [data-testid="canvas-background-label"] {
+  font-weight: 600;
+  color: var(--board-control-fg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor
+    .excalidraw
+    .dropdown-menu:has(.board-menu-action)
+    .dropdown-menu-item {
+    transition: none;
+  }
+}
+
+.whiteboard-editor
+  .excalidraw
+  .dropdown-menu:not(.dropdown-menu--mobile):has(.board-menu-action) {
+  width: 320px;
+}
+
+.whiteboard-editor .excalidraw .board-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  border: 2px solid var(--board-ink);
+  border-radius: 50%;
+  background: var(--board-yellow);
+  color: var(--board-ink);
+  box-shadow: 2px 2px 0 var(--board-ink);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.whiteboard-editor .excalidraw .board-theme-toggle[aria-checked="true"] {
+  background: var(--board-control-bg);
+  color: var(--board-control-fg);
+}
+.whiteboard-editor .excalidraw .board-theme-toggle--mobile {
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .whiteboard-editor .excalidraw .board-theme-toggle:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--board-ink);
+  }
+}
+.whiteboard-editor .excalidraw .board-theme-toggle:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .excalidraw .board-theme-toggle {
+    transition: none;
+  }
+}

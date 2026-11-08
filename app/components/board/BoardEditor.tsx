@@ -8,6 +8,7 @@ import { useT } from "@agent-native/core/client/i18n";
 import { isSaveConflict } from "@agent-native/core/save-conflict";
 
 import "@excalidraw/excalidraw/index.css";
+import "./whiteboard-controls.css";
 import {
   Excalidraw,
   MainMenu,
@@ -35,6 +36,18 @@ import {
   type BoardScene,
   type LibraryItems,
 } from "@shared/whiteboard";
+import {
+  FilePlus2,
+  FolderOpen,
+  PencilLine,
+  Save,
+  ArrowDownUp,
+  MessageSquare,
+  UserRound,
+  House,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { nanoid } from "nanoid";
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate } from "react-router";
@@ -52,6 +65,8 @@ import { TAB_ID } from "@/lib/tab-id";
 import { loadBoardFiles, uploadBoardFile } from "@/lib/whiteboard/assets";
 import { SaveQueue } from "@/lib/whiteboard/save-queue";
 
+import VoicePreview from "./VoicePreview";
+
 window.EXCALIDRAW_ASSET_PATH = appPath("/excalidraw-assets/");
 type Draft = { title: string; scene: BoardScene };
 const message = (error: unknown) =>
@@ -66,6 +81,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
   const listQuery = useActionQuery("list-boards", {});
   const navigate = useNavigate();
   const api = useRef<ExcalidrawImperativeAPI | null>(null);
+  const editorRoot = useRef<HTMLDivElement>(null);
   const [libraryApi, setLibraryApi] = useState<ExcalidrawImperativeAPI | null>(
     null,
   );
@@ -422,6 +438,21 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
     appState,
     currentFiles,
   ) => {
+    // Excalidraw owns menu dismissal and toggling. Only update presentation when
+    // that state changes; pointer/scene changes do not trigger React renders.
+    const trigger =
+      editorRoot.current?.querySelector<HTMLButtonElement>(
+        ".main-menu-trigger",
+      );
+    const expanded = String(appState.openMenu === "canvas");
+    if (trigger && trigger.getAttribute("aria-expanded") !== expanded) {
+      trigger.setAttribute("aria-expanded", expanded);
+      trigger.setAttribute(
+        "aria-label",
+        appState.openMenu === "canvas" ? "Close menu" : "Open menu",
+      );
+      trigger.setAttribute("aria-haspopup", "true");
+    }
     files.current = currentFiles;
     const selectedElementIds = Object.keys(appState.selectedElementIds)
       .filter((id) => appState.selectedElementIds[id])
@@ -531,7 +562,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
           ? t("whiteboard.unsaved")
           : t("whiteboard.saved");
   return (
-    <div className="whiteboard-editor relative h-full w-full">
+    <div ref={editorRoot} className="whiteboard-editor relative h-full w-full">
       <Excalidraw
         initialData={initial}
         excalidrawAPI={(value) => {
@@ -541,20 +572,65 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
         onChange={onChange}
         onLibraryChange={onLibraryChange}
         name={boardQueue.current?.value.title ?? t("whiteboard.untitled")}
+        renderTopRightUI={(isMobile, appState) => (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={`board-theme-toggle${isMobile ? " board-theme-toggle--mobile" : ""}`}
+            role="switch"
+            aria-label="Dark mode"
+            aria-checked={appState.theme === "dark"}
+            onKeyDown={(event) => {
+              if (event.key === " " || event.key === "Enter")
+                event.stopPropagation();
+            }}
+            title={
+              appState.theme === "dark"
+                ? "Switch to light mode"
+                : "Switch to dark mode"
+            }
+            onClick={() => {
+              const editor = api.current;
+              if (!editor) return;
+              editor.updateScene({
+                appState: {
+                  theme:
+                    editor.getAppState().theme === "dark" ? "light" : "dark",
+                },
+                captureUpdate: CaptureUpdateAction.NEVER,
+              });
+            }}
+          >
+            {appState.theme === "dark" ? (
+              <Moon aria-hidden="true" />
+            ) : (
+              <Sun aria-hidden="true" />
+            )}
+          </Button>
+        )}
         autoFocus
       >
         <MainMenu>
           <MainMenu.Item
+            className="board-menu-action board-menu-primary"
+            icon={<FilePlus2 aria-hidden="true" />}
             onSelect={() => {
               void perform(newDrawing);
             }}
           >
             {t("whiteboard.new")}
           </MainMenu.Item>
-          <MainMenu.Item onSelect={() => setDialog("open")}>
+          <MainMenu.Item
+            className="board-menu-action"
+            icon={<FolderOpen aria-hidden="true" />}
+            onSelect={() => setDialog("open")}
+          >
             {t("whiteboard.open")}
           </MainMenu.Item>
           <MainMenu.Item
+            className="board-menu-action"
+            icon={<PencilLine aria-hidden="true" />}
             onSelect={() => {
               setTitle(boardQueue.current?.value.title ?? "");
               setDialog("rename");
@@ -563,6 +639,8 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
             {t("whiteboard.rename")}
           </MainMenu.Item>
           <MainMenu.Item
+            className="board-menu-action"
+            icon={<Save aria-hidden="true" />}
             onSelect={() => {
               void perform(flush);
             }}
@@ -570,7 +648,11 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
             {t("whiteboard.saveNow")}
           </MainMenu.Item>
           <MainMenu.Separator />
-          <MainMenu.Item onSelect={() => setDialog("files")}>
+          <MainMenu.Item
+            className="board-menu-action"
+            icon={<ArrowDownUp aria-hidden="true" />}
+            onSelect={() => setDialog("files")}
+          >
             {t("whiteboard.files")}
           </MainMenu.Item>
           <MainMenu.DefaultItems.LoadScene />
@@ -584,6 +666,8 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
           <MainMenu.DefaultItems.Help />
           <MainMenu.Separator />
           <MainMenu.Item
+            className="board-menu-action"
+            icon={<MessageSquare aria-hidden="true" />}
             onSelect={() => {
               void perform(() => go("/chat"));
             }}
@@ -591,6 +675,8 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
             {t("whiteboard.chat")}
           </MainMenu.Item>
           <MainMenu.Item
+            className="board-menu-action"
+            icon={<UserRound aria-hidden="true" />}
             onSelect={() => {
               void perform(() => go("/settings/profile"));
             }}
@@ -598,6 +684,8 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
             {t("whiteboard.account")}
           </MainMenu.Item>
           <MainMenu.Item
+            className="board-menu-action"
+            icon={<House aria-hidden="true" />}
             onSelect={() => {
               void perform(() => go("/"));
             }}
@@ -606,6 +694,9 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
           </MainMenu.Item>
         </MainMenu>
       </Excalidraw>
+      <VoicePreview
+        suspended={dialog !== null || blocker.state === "blocked"}
+      />
       <span
         role="status"
         aria-live="polite"

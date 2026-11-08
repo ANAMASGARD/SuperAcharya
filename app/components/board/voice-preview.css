@@ -1,0 +1,198 @@
+.whiteboard-editor .board-voice {
+  font-family: var(--font-sans, "Space Grotesk", sans-serif);
+  position: absolute;
+  z-index: 3;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  max-width: calc(100% - 24px);
+}
+.whiteboard-editor .board-voice[hidden] {
+  display: none;
+}
+.whiteboard-editor .board-voice-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  background: #242424;
+  border: 2px solid #000;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #000;
+  transition: background-color 140ms ease;
+}
+.whiteboard-editor .board-voice[data-phase="idle"] .board-voice-bar {
+  background: var(--board-yellow);
+}
+.whiteboard-editor .board-voice button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 10px;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  transform: none;
+  transition: background-color 140ms ease;
+}
+.whiteboard-editor .board-voice .board-voice-primary {
+  background: var(--board-yellow);
+  color: #000;
+  touch-action: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.whiteboard-editor .board-voice .board-voice-action {
+  background: transparent;
+  color: #fff;
+}
+.whiteboard-editor .board-voice button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: -3px;
+}
+.whiteboard-editor .board-voice[data-phase="idle"] button:focus-visible {
+  outline-color: #000;
+}
+.whiteboard-editor .board-voice button:disabled {
+  opacity: 0.4;
+}
+@media (hover: hover) and (pointer: fine) {
+  .whiteboard-editor .board-voice .board-voice-action:not(:disabled):hover {
+    background: #484848;
+  }
+}
+.whiteboard-editor .board-voice-label {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 6px 10px;
+  border: 2px solid #000;
+  border-radius: 999px;
+  background: #242424;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.whiteboard-editor
+  .board-voice[data-phase="idle"]:not(:hover):not(:focus-within)
+  .board-voice-label {
+  clip-path: inset(50%);
+}
+.whiteboard-editor .board-voice-wave {
+  display: flex;
+  gap: 3px;
+  height: 36px;
+  align-items: center;
+  padding: 0 6px;
+}
+.whiteboard-editor .board-voice-wave span {
+  display: block;
+  width: 3px;
+  border-radius: 3px;
+  background: #fff;
+  animation: board-voice-pulse 650ms ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.whiteboard-editor .board-voice[data-phase="active"] .board-voice-wave span {
+  animation-play-state: running;
+}
+@keyframes board-voice-pulse {
+  from {
+    transform: scaleY(0.45);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .board-voice button,
+  .whiteboard-editor .board-voice-bar {
+    transition: none;
+  }
+  .whiteboard-editor .board-voice-wave span {
+    animation: none;
+  }
+}
+
+.whiteboard-editor .board-voice-wave,
+.whiteboard-editor .board-voice-action {
+  animation: board-voice-reveal 140ms ease both;
+}
+@keyframes board-voice-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .board-voice-wave,
+  .whiteboard-editor .board-voice-action {
+    animation: none;
+  }
+}
+
+/* A compact 44px touch target, with the reference's ring-and-wave emblem. */
+.whiteboard-editor .board-voice[data-phase="idle"] .board-voice-bar {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.whiteboard-editor .board-voice .board-voice-primary {
+  padding: 7px;
+  border: 2px solid #000;
+}
+.whiteboard-editor .board-voice[data-phase="idle"] .board-voice-primary {
+  box-shadow: 2px 2px 0 #000;
+}
+.whiteboard-editor .board-voice-emblem {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 2px solid #000;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.whiteboard-editor .board-voice-emblem svg {
+  width: 20px;
+  height: 20px;
+}
+/* The expanded bar needs its own lane on narrow screens to leave footer
+   navigation and zoom/undo controls usable. The idle circle stays at the bottom. */
+@media (max-width: 900px) {
+  .whiteboard-editor .board-voice:not([data-phase="idle"]) {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.whiteboard-editor .board-voice .board-voice-action.board-voice-pause,
+.whiteboard-editor .board-voice .board-voice-action.board-voice-pause:hover {
+  background: var(--board-red);
+  color: #fff;
+}
+.whiteboard-editor .board-voice .board-voice-action.board-voice-play,
+.whiteboard-editor .board-voice .board-voice-action.board-voice-play:hover {
+  background: var(--board-yellow);
+  color: #000;
+}
+.whiteboard-editor .board-voice .board-voice-action.board-voice-close,
+.whiteboard-editor .board-voice .board-voice-action.board-voice-close:hover {
+  background: #fff;
+  color: #000;
+}
+.whiteboard-editor
+  .board-voice
+  :is(.board-voice-play, .board-voice-close):focus-visible {
+  outline-color: #000;
+}
