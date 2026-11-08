@@ -8,6 +8,7 @@ const agentNativePlugins = agentNative as unknown as (
 ) => any[];
 export default defineConfig({
   optimizeDeps: {
+    include: ["@excalidraw/excalidraw"],
     entries: [
       "app/entry.client.tsx",
       "app/root.tsx",
@@ -22,5 +23,19 @@ export default defineConfig({
     ...agentNativePlugins({
       ssrStubs: ["shiki"],
     }),
+    {
+      name: "current-markdown-style-dependency",
+      configResolved(config) {
+        // Core 0.226.0 names the old dependency; the installed hast runtime
+        // now imports style-to-object. Keep prebundling on the actual package.
+        config.optimizeDeps.include = (config.optimizeDeps.include ?? []).map(
+          (id) =>
+            id ===
+            "@agent-native/toolkit > react-markdown > hast-util-to-jsx-runtime > style-to-js"
+              ? "@agent-native/toolkit > react-markdown > hast-util-to-jsx-runtime > style-to-object"
+              : id,
+        );
+      },
+    },
   ],
 });

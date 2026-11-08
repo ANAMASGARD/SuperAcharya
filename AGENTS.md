@@ -341,3 +341,7 @@ For the hackathon, prioritize a demonstrable end-to-end lesson: **write a questi
 The supplied 2026 hackathon brief requires meaningful Agent-Native use, disclosure of pre-existing work, an actual working public Clips demo, and submission through the official form. Its stated deadline is **10 November 2026, 1:29 PM IST**. Treat this as the supplied event milestone, not a recurring deadline. Do not fabricate the demonstration or treat recording a clip as submitting an entry.
 
 A task is complete only when the requested behavior is implemented, applicable checks have passed or precise blockers are disclosed, unrelated functionality is preserved, and the progress record is updated. Finish with a concise report of changes, verification results, remaining limitations, and the next useful step. Do not claim deployment, testing, staging, or commits that did not occur.
+
+## Implemented whiteboard capability
+
+The private full-screen editor, shared CRUD actions, revision behavior, binary upload exception, and storage prerequisites are documented in [docs/whiteboard.md](docs/whiteboard.md). Use those actions for both manual and agent access. Teaching/audio and multiplayer remain future work; consult `memory/memory.md` for actual verification and blockers.

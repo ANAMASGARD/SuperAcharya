@@ -1,76 +1,24 @@
 # Super Acharya — project memory
 
-## Project direction
+## Project and authentication
 
-- **Product:** Super Acharya — whiteboard-first, real-time, multimodal AI teacher (Builder.io Agent-Native 2026).
-- **Framework:** Agent-Native standalone — React 19, React Router 8, Vite, Nitro/h3. No Next.js. No Clerk.
-- **Stack:** `@agent-native/core` / `toolkit` / `agentkit` 0.226.0, Drizzle over Postgres/PGlite; production DB via Neon `DATABASE_URL`.
-- **Authority:** `AGENTS.md` = vision/rules; this file = what is implemented and verified. Read the code to confirm behavior.
+- Super Acharya is an Agent-Native standalone React, React Router, Vite and Nitro application. It uses the existing framework authentication and Drizzle database client with Neon PostgreSQL or local PGlite; it does not use Next.js or a second authentication system.
+- Email/password sign-in and the existing Google, Microsoft and Facebook provider integrations are implemented. Full social sign-in requires correctly configured provider credentials and callback URLs; email-dependent flows require configured outbound mail.
+- The public landing is `/`; authenticated users can stay on it. Get started and the default post-auth route lead to `/whiteboard`. Chat remains at `/chat`, and `/board` redirects to the whiteboard. The landing bootstrap preserves this behavior without the previously observed hydration mismatch.
 
-## Authentication
+## Whiteboard
 
-- Framework only: `createToolkitAuthPlugin` in `server/plugins/auth.ts`. No parallel `/api/auth` or second auth product.
-- **Email/password** and magic link when outbound email is configured.
-- **Google:** framework flow `/_agent-native/google/auth-url` → `/_agent-native/google/callback` (`GOOGLE_SIGN_IN_*` in env).
-- **Microsoft & Facebook:** Better Auth `POST /_agent-native/auth/ba/sign-in/social`; credentials in `server/lib/better-auth-social-providers.ts` (`MICROSOFT_*`, `FACEBOOK_*`).
-- **Sign-in UI:** `/auth/sign-in`, `/auth/sign-up` — Google, Microsoft (four-colour icon), Facebook. Apple removed from the screen.
-- **Better Auth bootstrap fix:** `server/plugins/auth.ts` calls `getBetterAuth({ socialProviders })` before the framework session route, so Facebook/Microsoft are not lost to a first empty singleton (`PROVIDER_NOT_FOUND`).
-- **Local env:** `.env.example` documents redirect URIs. Set `BETTER_AUTH_URL=http://localhost:8080` in `.env.local` so Better Auth callbacks match `agent-native dev` (port 8080). Use `AGENT_NATIVE_DISABLE_AUTO_DEV_ACCOUNT=1` for real sign-in on localhost.
-- **Provider consoles (local dev):** register these redirect URIs exactly:
-  - Google: `http://localhost:8080/_agent-native/google/callback`
-  - Facebook: `http://localhost:8080/_agent-native/auth/ba/callback/facebook`
-  - Microsoft: `http://localhost:8080/_agent-native/auth/ba/callback/microsoft`
-- Google `redirect_uri_mismatch` is fixed in Google Cloud Console, not in app code. `gcloud` cannot edit console OAuth clients.
+- `/whiteboard` opens the latest saved drawing or creates the first one; `/whiteboard/:boardId` opens a private drawing. The full-screen editor hides app chrome while preserving Chat, Settings and agent infrastructure elsewhere.
+- The embedded Excalidraw package supports its native tools, undo/redo, library, theme and menus. App controls provide new/open/rename/save and standard browser import/export of editable drawings, PNG and SVG. Fonts are self-hosted. Vite pre-bundling fixes the `es6-promise-pool` default-export issue and accounts for the installed Markdown style dependency.
+- Authenticated, owner-scoped shared actions handle board creation, reads, saves, listing and personal libraries. Nano IDs identify app-owned records; framework identities and Excalidraw element/file IDs are retained. Scene elements, bindings, groups and custom metadata are stored along with durable app-state fields. Selection and revision are exposed to agent context.
+- Named additive Drizzle migrations provide profile, drawing, asset and library tables. The user's local development log showed both migrations applied to its configured PostgreSQL database; the agent did not run production migrations. The action contract and implementation details are in `docs/whiteboard.md`.
+- Autosave is debounced and serialized, with revision checks and safe retries. Conflicts preserve local work and offer a copy or loading the saved version. Navigation attempts to save first. Failed saves retain edits and offer retry or file export; browser memory is not an offline durable draft store.
+- Image bytes use authenticated private-storage upload/download routes; SQL stores references and metadata rather than base64. Supported raster formats are validated and SVG imports are converted to PNG. Private storage is not configured, and the user chose to defer it. Image-containing drawings cannot be confirmed saved until their assets are durable. Configure the existing private storage integration before verifying real image upload and reopen; do not provision services without authorization.
 
-## Routes and landing
+## Verification and remaining work
 
-- **`/`** — public video hero landing (`app/components/landing/LandingPage.tsx`). Signed-in users can stay on `/` (no auto-bounce to the classroom).
-- **Landing auth redirect disabled:** `app/root.tsx` sets `window.__agentNativeAuthRedirectStarted` on `/` so the framework’s injected `data-agent-native-auth-redirect` script does not send signed-in visitors away from the marketing page.
-- **Header (right):** signed-out → “Sign in” → `/auth/sign-in`; signed-in → circular profile avatar (session `image` or initial) linking to the whiteboard.
-- **“Get started”** → `/whiteboard` for everyone (session required inside the app shell on that route).
-- **`/whiteboard`** — classroom placeholder (`BOARD_PATH` = `/whiteboard` in `app/lib/chat-paths.ts`). `app.homePath` in `server/plugins/agent-native-email-branding.ts` matches `/whiteboard`.
-- **`/board`** — redirect to `/whiteboard` for old links.
-- **`/home`** — product cards; chat secondary in sidebar.
-- **Public paths:** `/`, `/auth/*` (`app/lib/public-routes.ts`, `server/plugins/auth.ts`). Other routes use the signed-in shell.
-- **Post-auth default** (no `?c=`): `resolveResumeHref` → `/whiteboard` (`app/lib/auth-client.ts`).
-- **`DbSyncSetup`:** wrapped in `<ClientOnly>` on public routes (`app/root.tsx`).
-
-## Data
-
-- Neon linked; `DATABASE_URL` / `DATABASE_URL_UNPOOLED` in `.env.local` (gitignored). No app-owned lesson/whiteboard tables yet.
-
-## Verification (last run)
-
-| Check | Result |
-|--------|--------|
-| `pnpm run typecheck` | Passed |
-| `pnpm test` | 19/19 passed |
-| `pnpm agent-native:doctor` | Clean |
-| `pnpm run build` | Complete (exit 0) |
-
-Social OAuth: Facebook/Microsoft social endpoints return authorize URLs after auth-plugin fix; full browser login depends on provider console redirect URIs. Google same.
-
-## Important files
-
-| Area | Path |
-|------|------|
-| Auth plugin + Better Auth preload | `server/plugins/auth.ts` |
-| Extra social providers | `server/lib/better-auth-social-providers.ts` |
-| Sign-in entry forwarder | `server/lib/sign-in-entry-html.ts` |
-| Auth screens | `app/components/auth/*`, `app/lib/auth-client.ts` |
-| Landing | `app/components/landing/LandingPage.tsx` |
-| Whiteboard route | `app/routes/whiteboard.tsx`, `app/components/board/BoardPage.tsx` |
-| Paths / public routes | `app/lib/chat-paths.ts`, `app/lib/public-routes.ts` |
-| Root shell | `app/root.tsx` |
-| Env docs | `.env.example` |
-
-## Not done yet
-
-- Register localhost (and production) OAuth redirect URIs at Google, Meta, and Microsoft Entra; smoke-test each provider end to end.
-- Excalidraw on the whiteboard, lesson ops, LangGraph teaching workflow, STT/TTS, interruption handling.
-- Whiteboard link in `app/components/layout/Sidebar.tsx` (route exists; sidebar may still emphasize Home/Chat only).
-- Optional: email verification / forgot-password flows with a real mail provider.
-
-## Git policy
-
-- Work on `main`. Commits only when the user asks. Do not commit `.env.local` or secrets.
+- Typecheck, focused tests (31 passed), Agent-Native doctor, production build and diff whitespace checks passed. No lint script is configured.
+- Local browser verification covered authentication landing, full-screen desktop and mobile editor, drawing, undo/redo, board selection and renaming, save/reload, personal library, actual editable/PNG/SVG downloads and editable-file reimport. Fresh uncached whiteboard load showed Saved and no console errors.
+- In an isolated local PGlite environment, competing tabs produced a conflict and successfully saved the losing work as a copy. A server connection failure retained unsaved work; retry after restart saved it. Row readback confirmed scene contents. The tests include ownership, validation, idempotence, revision conflicts, queued edits and image reference handling with a test-only in-memory provider.
+- Real private storage image persistence and reopening remain unverified. Automatic online-event recovery and all possible network failures were not exhaustively tested. Framework dependency source-map, route-rule and build directive warnings remain. Full social OAuth browser flows depend on provider configuration.
+- Teaching workflows, audio, multiplayer and public sharing are not implemented in this slice. Preserve existing authentication and agent infrastructure. Consult `AGENTS.md` for architecture and Git rules and verify current source before assuming historical results remain current.

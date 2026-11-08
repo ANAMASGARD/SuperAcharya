@@ -8,6 +8,11 @@ export default defineAction({
   schema: z.object({
     view: z.string().optional().describe("View name to navigate to"),
     path: z.string().optional().describe("URL path to navigate to"),
+    boardId: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{21}$/)
+      .optional()
+      .describe("Drawing ID for whiteboard navigation"),
     threadId: z.string().optional().describe("Chat thread ID to open"),
   }),
   http: false,
@@ -18,6 +23,7 @@ export default defineAction({
     const nav: Record<string, string> = {};
     if (args.view) nav.view = args.view;
     if (args.path) nav.path = args.path;
+    if (args.boardId) nav.boardId = args.boardId;
     if (args.threadId) nav.threadId = args.threadId;
     nav._writeId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     await writeAppStateForCurrentTab("navigate", nav);

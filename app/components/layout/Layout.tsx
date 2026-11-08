@@ -19,7 +19,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { APP_TITLE } from "@/lib/app-config";
-import { HOME_PATH, isChatPathname } from "@/lib/chat-paths";
+import {
+  HOME_PATH,
+  isWhiteboardPathname,
+  isChatPathname,
+} from "@/lib/chat-paths";
 import { TAB_ID } from "@/lib/tab-id";
 
 // Not lazy() like Header: the inspector wraps the page, so a Suspense fallback
@@ -84,6 +88,7 @@ function LayoutShell({ children }: LayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isChatRoute = isChatPathname(location.pathname);
+  const boardOwnsChrome = isWhiteboardPathname(location.pathname);
   // Settings brings its own navigation, header, and agent toggle, so it
   // renders full width.
   const settingsOwnsChrome = isSettingsPathname(location.pathname);
@@ -129,7 +134,7 @@ function LayoutShell({ children }: LayoutProps) {
   const ownsToolbar = routeOwnsToolbar(location.pathname);
   const contentFrame = (
     <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-      {isChatRoute ? (
+      {boardOwnsChrome ? null : isChatRoute ? (
         <MobileAppBar
           className="md:hidden"
           onOpenNavigation={openMobileSidebar}
@@ -146,7 +151,9 @@ function LayoutShell({ children }: LayoutProps) {
           <Header onOpenMobileSidebar={openMobileSidebar} />
         </Suspense>
       )}
-      <main className="agent-native-app-main min-w-0 flex-1 overflow-y-auto overscroll-contain">
+      <main
+        className={`agent-native-app-main min-h-0 min-w-0 flex-1 ${boardOwnsChrome ? "overflow-hidden" : "overflow-y-auto overscroll-contain"}`}
+      >
         {children}
       </main>
     </div>
@@ -155,7 +162,7 @@ function LayoutShell({ children }: LayoutProps) {
   return (
     <HeaderActionsProvider>
       <div className="agent-layout-shell chat-layout-shell flex h-screen w-full overflow-hidden bg-background text-foreground">
-        {settingsOwnsChrome ? null : (
+        {settingsOwnsChrome || boardOwnsChrome ? null : (
           <div
             data-collapsed={sidebarCollapsed ? "true" : "false"}
             className="agent-layout-left-drawer hidden md:block"
@@ -192,6 +199,7 @@ function LayoutShell({ children }: LayoutProps) {
           </div>
         ) : (
           <AgentInspector
+            enabled={!boardOwnsChrome}
             chatHomeHandoffActive={false}
             chatHomeHandoffPending={false}
           >

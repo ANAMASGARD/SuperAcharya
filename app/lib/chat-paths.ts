@@ -9,6 +9,9 @@ import {
 
 export const HOME_PATH = "/home";
 export const BOARD_PATH = "/whiteboard";
+export function isWhiteboardPathname(pathname: string): boolean {
+  return pathname === BOARD_PATH || pathname.startsWith(`${BOARD_PATH}/`);
+}
 export const NEW_CHAT_PATH = "/chat";
 
 const FAILED_CHAT_HANDOFF_PREFIX = "agent-native.chat.failed-handoff:";

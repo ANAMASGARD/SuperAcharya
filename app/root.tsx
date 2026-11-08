@@ -62,15 +62,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
-        {/* The framework appends a script that sends any signed-in visitor from
-            `/` to the classroom. This flag runs first and leaves the landing
-            page in place; Get started still opens the whiteboard. */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              'if(location.pathname==="/"||location.pathname===""){window.__agentNativeAuthRedirectStarted=true}',
-          }}
-        />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content"
@@ -97,6 +88,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
+        {/* Keep app-owned bootstrap outside the framework-injected head scripts.
+            This still runs before the appended authentication redirect. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'if(location.pathname==="/"||location.pathname===""){window.__agentNativeAuthRedirectStarted=true}',
+          }}
+        />
         {children}
         <ScrollRestoration />
         <Scripts />

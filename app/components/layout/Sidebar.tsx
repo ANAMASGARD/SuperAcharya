@@ -3,6 +3,7 @@ import { OrgSwitcher } from "@agent-native/toolkit/app/org";
 import { openCommandMenu } from "@agent-native/toolkit/app/shared";
 import {
   IconHome,
+  IconChalkboard,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
   IconMessageCircle,
@@ -16,7 +17,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { APP_TITLE } from "@/lib/app-config";
-import { HOME_PATH, NEW_CHAT_PATH } from "@/lib/chat-paths";
+import {
+  BOARD_PATH,
+  isWhiteboardPathname,
+  HOME_PATH,
+  NEW_CHAT_PATH,
+} from "@/lib/chat-paths";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -165,6 +171,13 @@ export function Sidebar({
           collapsed ? "items-center px-1" : "",
         )}
       >
+        <NavLink
+          to={BOARD_PATH}
+          collapsed={collapsed}
+          active={isWhiteboardPathname(location.pathname)}
+          label={t("whiteboard.navigation")}
+          icon={IconChalkboard}
+        />
         <NavLink
           to={HOME_PATH}
           collapsed={collapsed}

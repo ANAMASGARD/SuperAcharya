@@ -10,6 +10,7 @@ import { chatThreadPath } from "@/lib/chat-paths";
 import { TAB_ID } from "@/lib/tab-id";
 
 interface AgentInspectorProps {
+  enabled?: boolean;
   children: ReactNode;
   chatHomeHandoffActive: boolean;
   chatHomeHandoffPending: boolean;
@@ -17,6 +18,7 @@ interface AgentInspectorProps {
 
 /** Contextual inspector shell used on secondary chat routes. */
 export function AgentInspector({
+  enabled = true,
   children,
   chatHomeHandoffActive,
   chatHomeHandoffPending,
@@ -31,6 +33,7 @@ export function AgentInspector({
 
   return (
     <AgentSidebar
+      enabled={enabled}
       composerContextProvider={ChatComposerContextProvider}
       position="right"
       chatViewTransition

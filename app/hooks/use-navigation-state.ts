@@ -7,6 +7,8 @@ import { useAgentRouteState } from "@agent-native/core/client/navigation";
 import {
   chatThreadPath,
   HOME_PATH,
+  BOARD_PATH,
+  isWhiteboardPathname,
   isChatPathname,
   NEW_CHAT_PATH,
   threadIdFromPath,
@@ -19,6 +21,7 @@ export interface NavigationState {
   path?: string;
   publicPath?: string;
   threadId?: string;
+  boardId?: string;
 }
 
 export function useNavigationState() {
@@ -70,12 +73,16 @@ export function navigationStateForPath(pathname: string): NavigationState {
     path: pathname,
     publicPath: appPathFromLocalRoute(pathname),
     ...(threadId ? { threadId } : {}),
+    ...(pathname.startsWith(`${BOARD_PATH}/`)
+      ? { boardId: pathname.slice(BOARD_PATH.length + 1) }
+      : {}),
   };
 }
 
 function viewForPath(pathname: string): string {
   if (pathname === "/" || pathname === "") return "landing";
   if (isAuthScreenPath(pathname)) return "auth";
+  if (isWhiteboardPathname(pathname)) return "whiteboard";
   if (isChatPathname(pathname)) return "chat";
   if (pathname === HOME_PATH) return "home";
   if (pathname.startsWith("/database")) return "database";
@@ -91,6 +98,8 @@ function viewForPath(pathname: string): string {
 
 function pathForView(view?: string): string {
   switch (view) {
+    case "whiteboard":
+      return BOARD_PATH;
     case "chat":
     case "ask":
       return NEW_CHAT_PATH;
@@ -113,7 +122,9 @@ function pathForView(view?: string): string {
   }
 }
 
-export function pathForCommand(command: any): string {
+export function pathForCommand(command: NavigationState): string {
+  if (command.view === "whiteboard" && command.boardId)
+    return `${BOARD_PATH}/${encodeURIComponent(command.boardId)}`;
   const path = pathForView(command?.view);
   if (command?.view !== "chat" && command?.view !== "ask") return path;
   const threadId =
