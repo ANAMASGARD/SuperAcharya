@@ -1,3 +1,5 @@
+> Teacher handoff update: successful finalized recordings now submit once to the classroom runtime; manual Send uses the same recording identity. OpenAI/Clocked/Sarvam and board teaching are documented in [teacher.md](teacher.md). Earlier statements below about the disabled Send button or absent LLM describe the previous STT-only milestone.
+
 # Whiteboard speech
 
 The voice control streams microphone audio through the authenticated server to Gnani Prisma `prisma-v3.0`. The realtime protocol uses `wss://api.vachana.ai/stt/v3/stream` with 1,024-byte mono 16 kHz PCM frames at 32 ms cadence. Release/Pause sends `commit` immediately. Sessions support up to 10 minutes of continuous speech on one connection. Audio is never held for 30-second uploads. Finalized phrases append to the live transcript; the panel follows new text unless the user scrolls upward. REST is retained only for explicit recovery of clips up to 29 seconds.

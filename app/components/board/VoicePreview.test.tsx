@@ -64,6 +64,44 @@ afterEach(async () => {
 });
 
 describe("microphone control", () => {
+  it("hands off only a successful final recording once and shares its ID with manual Send", async () => {
+    const finalized = vi.fn();
+    await act(async () =>
+      root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+    );
+    await key("keydown");
+    const update = vi.mocked(openSpeechStream).mock.calls[0]?.[2];
+    await act(async () =>
+      update?.({ ...result, transcript: "partial phrase" }),
+    );
+    expect(finalized).not.toHaveBeenCalled();
+    await key("keyup");
+    expect(finalized).toHaveBeenCalledTimes(1);
+    const value = finalized.mock.calls[0]?.[0];
+    expect(value).toMatchObject({ text: result.transcript });
+    await act(async () =>
+      root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+    );
+    expect(finalized).toHaveBeenCalledTimes(1);
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".board-voice-send")?.click(),
+    );
+    expect(finalized).toHaveBeenLastCalledWith(value);
+  });
+  it("keeps truncated transcripts for review without automatic handoff", async () => {
+    const finalized = vi.fn();
+    liveFinish.mockResolvedValue({ ...result, truncated: true });
+    await act(async () =>
+      root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+    );
+    await key("keydown");
+    await key("keyup");
+    expect(finalized).not.toHaveBeenCalled();
+    expect(host.textContent).toContain(result.transcript);
+    expect(
+      host.querySelector<HTMLButtonElement>(".board-voice-send")?.disabled,
+    ).toBe(true);
+  });
   it("holds, stops on release, shows loading then the real transcript", async () => {
     let resolve!: (value: typeof result) => void;
     liveFinish.mockImplementation(

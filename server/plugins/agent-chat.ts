@@ -12,6 +12,8 @@ import {
 
 const INITIAL_TOOL_NAMES = [
   "view-screen",
+  "get-teacher-session",
+  "update-teacher-context",
   "navigate",
   "hello",
   "provider-api-request",
@@ -26,14 +28,28 @@ export default createAgentChatPlugin({
       search: searchConversationReferences,
     },
   },
-  prepareRequest: async ({ references }) => {
+  prepareRequest: async ({ references, threadId }) => {
+    if (threadId?.startsWith("teacher:"))
+      throw new Error(
+        "Use the classroom teacher runtime for this conversation.",
+      );
     await validateConversationReferences(references);
   },
   actions: loadActionsFromStaticRegistry(actionsRegistry),
   mcp: { connectorCatalog: [], appApprovalPage: true },
   initialToolNames: INITIAL_TOOL_NAMES,
+  resolveActionSurface: ({ availableActionNames }) => ({
+    allowedActionNames: availableActionNames.filter(
+      (name) =>
+        ![
+          "start-teacher-turn",
+          "enqueue-teaching-step",
+          "ack-teaching-step",
+        ].includes(name),
+    ),
+  }),
   resolveOrgId: async (event) => (await getOrgContext(event)).orgId,
-  systemPrompt: `You are the Chat app agent.
+  systemPrompt: `You are the Super Acharya workspace assistant. The classroom teacher runs in its own authenticated LangGraph runtime. Never start or impersonate a classroom teaching turn. Use view-screen for saved board context and get-teacher-session for accepted lesson history. Direct students to Ask Acharya on the whiteboard for live canvas interpretation and writing.
 
 This is a minimal chat-first Agent-Native app. The chat is the product surface, and actions are the contract shared by chat, UI, HTTP, MCP, A2A, and CLI.
 

@@ -1,26 +1,48 @@
 import { useT } from "@agent-native/core/client/i18n";
 import { ArrowUp, Pause, Play, X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import enUS from "@/i18n/en-US";
-import { useSpeech } from "@/lib/speech/use-speech";
+import { useSpeech, type FinalizedDictation } from "@/lib/speech/use-speech";
 
 import "./voice-preview.css";
 
-/** Microphone clips are transcribed on release; the tutor handoff is deferred. */
+/** Only completed successful recordings enter the teacher; partial text stays local. */
 export default function VoicePreview({
   boardId,
   suspended = false,
+  onFinalized,
+  onInterrupt,
+  teacherBusy = false,
 }: {
   boardId: string;
   suspended?: boolean;
+  onFinalized?: (dictation: FinalizedDictation) => void;
+  onInterrupt?: () => void;
+  teacherBusy?: boolean;
 }) {
   const t = useT();
   const label = (key: keyof typeof enUS.speech) =>
     t(`speech.${key}`, { defaultValue: enUS.speech[key] });
-  const { phase, result, error, level, start, pause, cancel, retry, canRetry } =
-    useSpeech(boardId);
+  const {
+    phase,
+    result,
+    error,
+    level,
+    start: startSpeech,
+    pause,
+    cancel,
+    retry,
+    canRetry,
+    finalized,
+  } = useSpeech(boardId, onFinalized);
+  const interruptRef = useRef(onInterrupt);
+  interruptRef.current = onInterrupt;
+  const start = useCallback(() => {
+    interruptRef.current?.();
+    return startSpeech();
+  }, [startSpeech]);
   const held = useRef<"keyboard" | null>(null);
   const primary = useRef<HTMLButtonElement>(null);
   const transcriptPanel = useRef<HTMLElement>(null);
@@ -31,6 +53,7 @@ export default function VoicePreview({
     if (panel && followTranscript.current) panel.scrollTop = panel.scrollHeight;
   }, [result?.transcript, phase]);
   const close = () => {
+    interruptRef.current?.();
     cancel();
     primary.current?.focus();
   };
@@ -91,6 +114,7 @@ export default function VoicePreview({
       }
     };
     const blur = () => {
+      interruptRef.current?.();
       held.current = null;
       cancel();
     };
@@ -98,7 +122,10 @@ export default function VoicePreview({
       if (document.hidden) blur();
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") cancel();
+      if (event.key === "Escape") {
+        interruptRef.current?.();
+        cancel();
+      }
     };
     window.addEventListener("keydown", pressKey, true);
     window.addEventListener("keyup", releaseKey, true);
@@ -114,7 +141,10 @@ export default function VoicePreview({
     };
   }, [pause, cancel, start, busy, phase, suspended]);
   useEffect(() => {
-    if (suspended) cancel();
+    if (suspended) {
+      interruptRef.current?.();
+      cancel();
+    }
   }, [suspended, cancel]);
 
   const expanded = phase !== "idle";
@@ -222,18 +252,21 @@ export default function VoicePreview({
                 <Play aria-hidden="true" />
               )}
             </Button>
-            <span title={label("sendUnavailable")}>
+            <span title={label(onFinalized ? "send" : "sendUnavailable")}>
               <Button
                 type="button"
                 className="board-voice-action board-voice-send"
                 aria-label={label("send")}
                 aria-describedby="speech-send-unavailable"
-                disabled
+                disabled={!onFinalized || !finalized || teacherBusy}
+                onClick={() => {
+                  if (finalized) onFinalized?.(finalized);
+                }}
               >
                 <ArrowUp aria-hidden="true" />
               </Button>
               <span id="speech-send-unavailable" className="sr-only">
-                {label("sendUnavailable")}
+                {label(onFinalized ? "send" : "sendUnavailable")}
               </span>
             </span>
           </>

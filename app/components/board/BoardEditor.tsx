@@ -62,10 +62,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { TAB_ID } from "@/lib/tab-id";
+import {
+  captureQuestion,
+  applyTeachingStep,
+  type BrowserTeachingTools,
+} from "@/lib/teacher/board";
 import { loadBoardFiles, uploadBoardFile } from "@/lib/whiteboard/assets";
 import { SaveQueue } from "@/lib/whiteboard/save-queue";
 
-import VoicePreview from "./VoicePreview";
+import TeacherPanel from "./TeacherPanel";
 
 window.EXCALIDRAW_ASSET_PATH = appPath("/excalidraw-assets/");
 type Draft = { title: string; scene: BoardScene };
@@ -315,6 +320,29 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
     await boardQueue.current?.flush();
     await libraryQueue.current?.flush();
   }
+  const teachingTools: BrowserTeachingTools = {
+    capture: async () => {
+      await flush();
+      if (!api.current || !hydratedRevision.current)
+        throw new Error("Wait for the drawing to load.");
+      return captureQuestion(api.current, hydratedRevision.current);
+    },
+    apply: async (operation, isActive) => {
+      await flush();
+      if (!isActive() || !api.current || !boardQueue.current)
+        throw new Error("Teacher turn stopped.");
+      applyTeachingStep(api.current, operation);
+      onChange(
+        api.current.getSceneElementsIncludingDeleted(),
+        api.current.getAppState(),
+        api.current.getFiles(),
+      );
+      await flush();
+      if (!isActive() || !hydratedRevision.current)
+        throw new Error("Teacher turn stopped.");
+      return hydratedRevision.current;
+    },
+  };
   async function perform(work: () => Promise<void>) {
     setBusy(true);
     setError(null);
@@ -694,7 +722,8 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
           </MainMenu.Item>
         </MainMenu>
       </Excalidraw>
-      <VoicePreview
+      <TeacherPanel
+        boardTools={teachingTools}
         boardId={boardId}
         suspended={dialog !== null || blocker.state === "blocked"}
       />

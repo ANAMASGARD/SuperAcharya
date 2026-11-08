@@ -8,6 +8,9 @@ registerIdentityColumns(
     "whiteboards",
     "whiteboard_assets",
     "whiteboard_libraries",
+    "teacher_lessons",
+    "teacher_turns",
+    "teacher_operations",
   ].map((table) => ({
     table,
     column: "owner_email",

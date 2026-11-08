@@ -1,0 +1,117 @@
+.whiteboard-editor .board-teacher-open {
+  position: absolute;
+  z-index: 15;
+  right: 16px;
+  bottom: 76px;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #000;
+  border-radius: 50%;
+}
+.whiteboard-editor .board-teacher-panel {
+  /* The board's independent theme must not inherit light text from the app shell. */
+  color-scheme: light;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 0%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 32%;
+  --input: 0 0% 100%;
+  --border: 0 0% 0%;
+  --agent-kit-recessed-surface: #fff;
+  --agent-kit-raised-surface: #fff;
+  --agent-kit-subtle-surface: #fff2b3;
+  --agent-kit-text: #111;
+  --agent-kit-muted-text: #515151;
+  --agent-kit-border: #000;
+  --agentkit-chat-background: #fff;
+  position: absolute;
+  z-index: 20;
+  right: 16px;
+  bottom: max(80px, env(safe-area-inset-bottom));
+  width: min(430px, calc(100% - 32px));
+  max-height: calc(100dvh - 190px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 2px solid #000;
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 #000;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  overflow: auto;
+}
+.whiteboard-editor .board-teacher-panel[hidden],
+.whiteboard-editor .board-teacher-open[hidden] {
+  display: none;
+}
+.whiteboard-editor .board-teacher-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.whiteboard-editor .board-teacher-chat {
+  min-height: 100px;
+  height: 230px;
+  flex: 1 1 230px;
+  overflow: auto;
+}
+.whiteboard-editor .board-teacher-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.whiteboard-editor .board-teacher-panel textarea,
+.whiteboard-editor .board-teacher-panel select {
+  display: block;
+  width: 100%;
+  border: 2px solid #000;
+  border-radius: 6px;
+  padding: 8px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+.whiteboard-editor .board-teacher-panel :is(input, textarea)::placeholder {
+  color: #626262;
+  opacity: 1;
+}
+.whiteboard-editor .board-teacher-panel button[data-variant="outline"] {
+  color: #111;
+  background: #fff;
+}
+.whiteboard-editor .board-teacher-panel button[data-variant="outline"]:hover {
+  background: #fff2b3;
+}
+.whiteboard-editor .board-teacher-status,
+.whiteboard-editor .board-teacher-notice {
+  font-size: 13px;
+}
+.whiteboard-editor .board-teacher-notice {
+  padding: 8px;
+  border: 1px solid currentColor;
+}
+.whiteboard-editor .board-teacher-panel button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .whiteboard-editor .board-teacher-panel {
+    bottom: max(125px, env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 225px);
+  }
+}
+
+.whiteboard-editor .board-teacher-board-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.whiteboard-editor .board-teacher-board-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: #000;
+}

@@ -1,4 +1,5 @@
 import type { SpeechResult } from "@shared/speech";
+import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { startCapture, type Capture } from "./capture";
@@ -12,7 +13,30 @@ export type SpeechPhase =
   | "loading"
   | "paused"
   | "error";
-export function useSpeech(boardId: string) {
+export type FinalizedDictation = { id: string; text: string };
+export function useSpeech(
+  boardId: string,
+  onFinalized?: (dictation: FinalizedDictation) => void,
+) {
+  const finalizedCallback = useRef(onFinalized);
+  finalizedCallback.current = onFinalized;
+  const recordingId = useRef<string | null>(null);
+  const published = useRef<string | null>(null);
+  const [finalized, setFinalized] = useState<FinalizedDictation | null>(null);
+  const complete = useCallback((transcript: SpeechResult) => {
+    const id = recordingId.current;
+    if (
+      !id ||
+      published.current === id ||
+      transcript.truncated ||
+      !transcript.transcript.trim()
+    )
+      return;
+    const value = { id, text: transcript.transcript.trim() };
+    published.current = id;
+    setFinalized(value);
+    finalizedCallback.current?.(value);
+  }, []);
   const [phase, setPhase] = useState<SpeechPhase>("idle");
   const phaseRef = useRef<SpeechPhase>("idle");
   const [result, setResult] = useState<SpeechResult | null>(null);
@@ -27,6 +51,8 @@ export function useSpeech(boardId: string) {
     setPhase(next);
   }, []);
   const cancel = useCallback(() => {
+    recordingId.current = null;
+    setFinalized(null);
     session.current?.abort();
     session.current = null;
     stream.current?.cancel();
@@ -53,6 +79,7 @@ export function useSpeech(boardId: string) {
         setResult(transcript);
         retryAudio.current = null;
         transition("paused");
+        complete(transcript);
       } catch (err) {
         if (session.current !== controller || controller.signal.aborted) return;
         setError(
@@ -61,7 +88,7 @@ export function useSpeech(boardId: string) {
         transition("error");
       }
     },
-    [boardId, transition],
+    [boardId, transition, complete],
   );
   const pause = useCallback(async () => {
     if (phaseRef.current === "requesting") {
@@ -86,6 +113,7 @@ export function useSpeech(boardId: string) {
         setResult(transcript);
         retryAudio.current = null;
         transition("paused");
+        complete(transcript);
       }
     } catch (err) {
       current.cancel();
@@ -96,12 +124,14 @@ export function useSpeech(boardId: string) {
       );
       transition("error");
     }
-  }, [cancel, transition]);
+  }, [cancel, transition, complete]);
   const start = useCallback(async () => {
     if (["active", "requesting", "loading"].includes(phaseRef.current)) return;
     session.current?.abort();
     const controller = new AbortController();
     session.current = controller;
+    recordingId.current = nanoid();
+    setFinalized(null);
     retryAudio.current = null;
     setError("");
     setResult(null);
@@ -188,6 +218,7 @@ export function useSpeech(boardId: string) {
     [boardId],
   );
   return {
+    finalized,
     phase,
     result,
     error,
