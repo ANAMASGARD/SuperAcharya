@@ -344,4 +344,4 @@ A task is complete only when the requested behavior is implemented, applicable c
 
 ## Implemented whiteboard capability
 
-The private full-screen editor, shared CRUD actions, revision behavior, binary upload exception, and storage prerequisites are documented in [docs/whiteboard.md](docs/whiteboard.md). Use those actions for both manual and agent access. Teaching/audio and multiplayer remain future work; consult `memory/memory.md` for actual verification and blockers.
+The private full-screen editor, shared CRUD actions, revision behavior, binary upload exception, and storage prerequisites are documented in [docs/whiteboard.md](docs/whiteboard.md). Use those actions for both manual and agent access. The Gnani realtime speech, recovery upload and setup contract are documented in [docs/speech.md](docs/speech.md); use `get-speech-status` to check setup for an owned drawing. Teacher/LLM integration and multiplayer remain future work; consult `memory/memory.md` for actual verification and blockers.

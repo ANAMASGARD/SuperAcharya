@@ -22,6 +22,7 @@ export default defineConfig({
     ...reactRouterPlugins(),
     ...agentNativePlugins({
       ssrStubs: ["shiki"],
+      nitro: { features: { websocket: true } },
     }),
     {
       name: "current-markdown-style-dependency",

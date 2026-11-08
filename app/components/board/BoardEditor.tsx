@@ -695,6 +695,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
         </MainMenu>
       </Excalidraw>
       <VoicePreview
+        boardId={boardId}
         suspended={dialog !== null || blocker.state === "blocked"}
       />
       <span

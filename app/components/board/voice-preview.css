@@ -196,3 +196,84 @@
   :is(.board-voice-play, .board-voice-close):focus-visible {
   outline-color: #000;
 }
+
+/* Real microphone energy drives bar heights; no simulated listening motion. */
+.whiteboard-editor .board-voice .board-voice-wave span {
+  animation: none;
+  transition: height 100ms linear;
+}
+.whiteboard-editor .board-voice-bar {
+  position: relative;
+}
+.whiteboard-editor .board-voice-loading-border {
+  position: absolute;
+  inset: -3px;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  filter: drop-shadow(0 0 3px var(--board-red));
+}
+.whiteboard-editor .board-voice-loading-border rect {
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  stroke: var(--board-red);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-dasharray: 18 82;
+  animation: board-speech-loading 1400ms linear infinite;
+}
+@keyframes board-speech-loading {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+.whiteboard-editor .board-voice-result {
+  position: absolute;
+  bottom: calc(100% + 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(340px, calc(100vw - 32px));
+  max-height: min(240px, 40dvh);
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 14px;
+  border: 2px solid #000;
+  box-shadow: 3px 3px 0 #000;
+  background: #fff;
+  color: #000;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.whiteboard-editor .board-voice-result small {
+  display: block;
+  margin-top: 8px;
+}
+.whiteboard-editor .board-voice .board-voice-retry {
+  width: auto;
+  height: auto;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 8px;
+  background: var(--board-yellow);
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .board-voice .board-voice-wave span {
+    transition: none;
+  }
+  .whiteboard-editor .board-voice-loading-border rect {
+    animation: none;
+    stroke-dasharray: none;
+  }
+}
+
+.whiteboard-editor .board-voice .board-voice-send:disabled {
+  background: var(--board-yellow);
+  color: #000;
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -372,3 +372,22 @@
     transition: none;
   }
 }
+
+/* Keep history control outlines solid even when both actions are unavailable. */
+.whiteboard-editor .excalidraw .undo-redo-buttons button,
+.whiteboard-editor .excalidraw .undo-redo-buttons .ToolIcon__icon {
+  opacity: 1;
+}
+.whiteboard-editor .excalidraw .undo-redo-buttons .ToolIcon__icon {
+  border: 2px solid var(--board-ink);
+  background: #fff;
+  color: var(--board-ink);
+}
+.whiteboard-editor
+  .excalidraw
+  .undo-redo-buttons
+  :is(button:disabled .ToolIcon__icon, .ToolIcon__icon[aria-disabled="true"])
+  svg {
+  color: var(--board-ink);
+  opacity: 0.5;
+}
