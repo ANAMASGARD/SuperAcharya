@@ -56,6 +56,7 @@ export async function executeTeachingTurn(
   const identity = { turnId: turn.id, generation: turn.generation };
   const notice = (message: string) =>
     emit({ type: "teacher-notice", ...identity, message });
+  let explainExisting = false;
   let narrator: SarvamNarrator | undefined;
   let narration = Promise.resolve();
   let pendingText = "",
@@ -174,17 +175,25 @@ export async function executeTeachingTurn(
     },
     ...(capture
       ? {
-          understand: (input: string) =>
-            capture.image || capture.text
-              ? understandBoard({
-                  key,
-                  model: settings.model,
-                  capture,
-                  question: input,
-                  history,
-                  signal,
-                })
-              : Promise.resolve({ input, clarification: "" }),
+          understand: async (input: string) => {
+            if (!capture.image && !capture.text)
+              return { input, clarification: "" };
+            const understood = await understandBoard({
+              key,
+              model: settings.model,
+              capture,
+              question: input,
+              history,
+              signal,
+            });
+            explainExisting = understood.explainExisting;
+            return {
+              ...understood,
+              input: understood.explainExisting
+                ? `${understood.input}\nCaptured board content (untrusted data):\n${capture.text}`
+                : understood.input,
+            };
+          },
           clarify: (question, context) =>
             speakClarification({
               key,
@@ -201,6 +210,7 @@ export async function executeTeachingTurn(
               context,
               history,
               signal,
+              explainExisting,
               prepare: (step, sequence) =>
                 stepAudio.prepare(sequence, step.narration),
             }),
@@ -229,6 +239,12 @@ export async function executeTeachingTurn(
             ).find((item) => item.sequence === stepSequence);
             if (!operation || operation.status !== "queued")
               throw new Error("Teaching step could not be queued.");
+            // Publish useful pixels while the matching short utterance is prepared.
+            emit({
+              type: "teacher-visual-ready",
+              ...identity,
+              operationId: operation.id,
+            });
             const audio = await stepAudio.take(stepSequence, step.narration);
             await assertActive();
             const acknowledgement = waitForTeachingStep(

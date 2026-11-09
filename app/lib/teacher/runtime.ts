@@ -40,6 +40,24 @@ export function createTeacherTransport(
   const attached = new Map<string, TeacherTurn>();
   const captures = new Map<string, CapturedQuestion>();
   const applied = new Set<string>();
+  const prepared = new Map<string, Promise<void>>();
+  const prepareVisual = (operationId: string, turn: TeacherTurn) => {
+    if (prepared.has(operationId)) return;
+    const isActive = () => active?.id === turn.id && active.generation === turn.generation;
+    const work = (async () => {
+      const tools = boardTools();
+      if (!tools || !isActive()) return;
+      const operations = await callAction("list-teaching-steps", { boardId, turnId: turn.id }, { method: "GET" });
+      const operation = operations.find((item) => item.id === operationId);
+      if (!isActive()) return;
+      if (!operation || operation.status !== "queued" || operation.tabId !== TAB_ID || operation.generation !== turn.generation)
+        throw new Error("Teaching step is no longer available.");
+      await tools.apply(operation, isActive);
+    })();
+    // Audio may arrive later; retain the rejection for applyStep without an unhandled promise.
+    void work.catch(() => {});
+    prepared.set(operationId, work);
+  };
   let capture: CapturedQuestion | undefined;
   let stepFailure = "";
   const applyStep = async (
@@ -53,6 +71,7 @@ export function createTeacherTransport(
     if (!tools || !isActive() || applied.has(operationId)) return;
     applied.add(operationId);
     try {
+      await prepared.get(operationId);
       const operations = await callAction(
         "list-teaching-steps",
         { boardId, turnId: turn.id },
@@ -182,6 +201,10 @@ export function createTeacherTransport(
         event.generation !== active.generation
       )
         return null;
+      if (event.type === "teacher-visual-ready") {
+        prepareVisual(event.operationId, active);
+        return null;
+      }
       if (event.type === "teacher-board-op") {
         void applyStep(event.operationId, event.audio, active);
         return null;
@@ -200,6 +223,7 @@ export function createTeacherTransport(
   });
   const stop = async () => {
     epoch++;
+    prepared.clear();
     const previous = active;
     active = null;
     pending?.abort();

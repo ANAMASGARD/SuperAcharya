@@ -36,6 +36,7 @@ export default function VoicePreview({
     retry,
     canRetry,
     finalized,
+    microphoneReady,
   } = useSpeech(boardId, onFinalized);
   const interruptRef = useRef(onInterrupt);
   interruptRef.current = onInterrupt;
@@ -156,7 +157,7 @@ export default function VoicePreview({
     phase === "active"
       ? label("listening")
       : phase === "requesting"
-        ? label("opening")
+        ? label(microphoneReady ? "starting" : "opening")
         : phase === "loading"
           ? label("loading")
           : phase === "paused"
@@ -193,7 +194,11 @@ export default function VoicePreview({
           aria-label={label(expanded ? "close" : "hold")}
           aria-pressed={phase === "active"}
           aria-disabled={expanded ? undefined : busy}
-          title={label(expanded ? "close" : "hint")}
+          title={
+            expanded
+              ? label("close")
+              : `${label("hint")}${microphoneReady ? " — Microphone ready; audio is sent only while speaking." : ""}`
+          }
           onKeyDown={(event) => {
             if (event.key === "Enter") event.stopPropagation();
           }}

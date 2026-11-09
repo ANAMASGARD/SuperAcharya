@@ -4,6 +4,7 @@ import { defineMachine } from "@agent-native/core/state-machine";
 import { and, asc, eq } from "drizzle-orm";
 import type { z } from "zod";
 
+import { teachingElementCount } from "../../../shared/teacher-board";
 import {
   acknowledgeTeachingStepSchema,
   enqueueTeachingStepSchema,
@@ -11,6 +12,7 @@ import {
   teachingStepTexts,
 } from "../../../shared/teacher-board";
 import { matchesTeachingLine } from "../../../shared/teacher-math";
+import { visualParts, matchesVisualPart } from "../../../shared/teacher-visual";
 import { getDb } from "../../db";
 import {
   teacherLessons,
@@ -53,7 +55,8 @@ export function waitForTeachingStep(
         : reject(new Error("Teaching step was not acknowledged."));
     };
     const abort = () => done(false);
-    const timer = setTimeout(abort, 45_000);
+    // Allow a complete explanatory paragraph plus scene saving/autoplay recovery.
+    const timer = setTimeout(abort, 120_000);
     // In-process notification is a fast path. SQL remains authoritative when
     // the acknowledgement is handled by a different serverless instance.
     const poll = async () => {
@@ -156,9 +159,9 @@ export async function enqueueTeachingStep(
         id,
         ownerEmail: owner,
         tabId: turn.tabId,
-        elementIds: teachingStepTexts(input.step).map(
-          (_, index) => `teacher-${id}-${index}`,
-        ),
+        elementIds: Array.from({
+          length: teachingElementCount(input.step),
+        }).map((_, index) => `teacher-${id}-${index}`),
         status: "queued",
       })
       .returning();
@@ -254,7 +257,16 @@ export async function acknowledgeTeachingStep(
             (element) =>
               element.id === id &&
               !element.isDeleted &&
-              matchesTeachingLine(element, texts[index]!),
+              (index < texts.length
+                ? matchesTeachingLine(element, texts[index]!)
+                : Boolean(
+                    op.step.visual &&
+                    matchesVisualPart(
+                      element,
+                      visualParts(op.step.visual)[index - texts.length]!,
+                      op.step.visual,
+                    ),
+                  )),
           ),
         )
       )

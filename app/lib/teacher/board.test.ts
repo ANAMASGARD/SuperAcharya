@@ -23,7 +23,17 @@ it("does not write a stale step when cancellation arrives while its font loads",
   });
   const updateScene = vi.fn();
   const editor = { updateScene } as unknown as ExcalidrawImperativeAPI;
-  const operation = {} as TeachingOperation;
+  const operation: TeachingOperation = {
+    id: "font-step",
+    boardId: "board",
+    turnId: "turn",
+    generation: "generation",
+    tabId: "tab",
+    sequence: 0,
+    status: "queued",
+    elementIds: ["line"],
+    step: { heading: "", lines: ["x = 3"], narration: "Simplify." },
+  };
   let active = true;
   const result = applyTeachingStep(editor, operation, () => active);
   active = false;

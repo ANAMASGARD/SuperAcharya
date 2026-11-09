@@ -3,7 +3,12 @@ import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { startCapture, type Capture } from "./capture";
-import { openSpeechStream, type SpeechStream } from "./stream";
+import { ReadyMicrophone } from "./microphone";
+import {
+  bufferSpeechUntilReady,
+  openSpeechStream,
+  type SpeechStream,
+} from "./stream";
 import { transcribeClip } from "./transcribe";
 
 export type SpeechPhase =
@@ -45,6 +50,24 @@ export function useSpeech(
   const session = useRef<AbortController | null>(null);
   const capture = useRef<Capture | null>(null);
   const stream = useRef<SpeechStream | null>(null);
+  const microphone = useRef<ReadyMicrophone | null>(null);
+  const [microphoneReady, setMicrophoneReady] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    const device = new ReadyMicrophone((ready) => {
+      if (mounted) setMicrophoneReady(ready);
+    });
+    microphone.current = device;
+    setMicrophoneReady(false);
+    // Request once on entering the classroom. A denial is retried only by an
+    // explicit speaking action. Preload the processor but connect no idle audio.
+    void device.warm().catch(() => {});
+    return () => {
+      mounted = false;
+      device.dispose();
+      if (microphone.current === device) microphone.current = null;
+    };
+  }, [boardId]);
   const retryAudio = useRef<Blob | null>(null);
   const transition = useCallback((next: SpeechPhase) => {
     phaseRef.current = next;
@@ -136,30 +159,28 @@ export function useSpeech(
     setError("");
     setResult(null);
     transition("requesting");
+    const fail = (failure: Error) => {
+      if (session.current !== controller || controller.signal.aborted) return;
+      controller.abort();
+      capture.current?.cancel();
+      capture.current = null;
+      stream.current?.cancel();
+      setLevel(0);
+      setError(failure.message);
+      transition("error");
+    };
     try {
-      const live = await openSpeechStream(
+      // Capture must not wait for authentication/provider WebSocket handshakes.
+      const connecting = openSpeechStream(
         boardId,
         controller.signal,
         (transcript) => {
           if (session.current === controller && !controller.signal.aborted)
             setResult(transcript);
         },
-        (failure) => {
-          if (session.current !== controller || controller.signal.aborted)
-            return;
-          capture.current?.cancel();
-          capture.current = null;
-          // Loading retains its WAV for explicit REST retry; the finish promise
-          // rejects separately. Pending permission must never start a late mic.
-          if (phaseRef.current === "requesting") controller.abort();
-          setError(failure.message);
-          transition("error");
-        },
+        fail,
       );
-      if (session.current !== controller || controller.signal.aborted) {
-        live.cancel();
-        return;
-      }
+      const live = bufferSpeechUntilReady(connecting, controller.signal, fail);
       stream.current = live;
       const current = await startCapture(
         controller.signal,
@@ -171,15 +192,12 @@ export function useSpeech(
           try {
             live.send(pcm);
           } catch (err) {
-            capture.current?.cancel();
-            capture.current = null;
-            live.cancel();
-            setError(
-              err instanceof Error ? err.message : "Speech connection lost.",
+            fail(
+              err instanceof Error ? err : new Error("Speech connection lost."),
             );
-            transition("error");
           }
         },
+        microphone.current ?? undefined,
       );
       if (session.current !== controller || controller.signal.aborted) {
         current.cancel();
@@ -189,15 +207,15 @@ export function useSpeech(
       transition("active");
     } catch (err) {
       if (session.current !== controller || controller.signal.aborted) return;
-      stream.current?.cancel();
-      setError(
+      fail(
         err instanceof DOMException && err.name === "NotAllowedError"
-          ? "Microphone permission was denied. Allow it in your browser and try again."
+          ? new Error(
+              "Microphone permission was denied. Allow it in your browser and try again.",
+            )
           : err instanceof Error
-            ? err.message
-            : "Could not open microphone.",
+            ? err
+            : new Error("Could not open microphone."),
       );
-      transition("error");
     }
   }, [boardId, pause, transition]);
   const retry = useCallback(() => {
@@ -219,6 +237,7 @@ export function useSpeech(
   );
   return {
     finalized,
+    microphoneReady,
     phase,
     result,
     error,

@@ -6,6 +6,7 @@ const { instances } = vi.hoisted(() => ({
     emit: (name: string, ...args: unknown[]) => boolean;
     send: ReturnType<typeof vi.fn>;
     close: ReturnType<typeof vi.fn>;
+    bufferedAmount: number;
   }>,
 }));
 vi.mock("ws", async () => {
@@ -43,6 +44,86 @@ beforeEach(() => {
   instances.length = 0;
 });
 afterEach(() => vi.useRealTimers());
+it("still rejects excessive audio rate and releases a provider queue that never drains", () => {
+  const flood = createSpeechHooks("rate-bound", "key"),
+    p1 = makePeer();
+  flood.open(p1);
+  emit("connected");
+  const frame = new Uint8Array(1024);
+  for (let i = 0; i < 64; i++)
+    flood.message(p1, {
+      rawData: frame,
+      text: () => "",
+      uint8Array: () => frame,
+    });
+  expect(p1.close).toHaveBeenCalledWith(1008, "Invalid audio stream");
+  const blocked = createSpeechHooks("rate-bound", "key"),
+    p2 = makePeer();
+  blocked.open(p2);
+  emit("connected");
+  instances.slice(-1)[0]!.bufferedAmount = 70000;
+  blocked.message(p2, {
+    rawData: frame,
+    text: () => "",
+    uint8Array: () => frame,
+  });
+  vi.advanceTimersByTime(12016);
+  expect(JSON.parse(p2.send.mock.calls.slice(-1)[0]![0])).toMatchObject({
+    type: "error",
+    message: expect.stringContaining("too slow"),
+  });
+  expect(p2.close).toHaveBeenCalled();
+  const next = createSpeechHooks("rate-bound", "key"),
+    p3 = makePeer();
+  next.open(p3);
+  expect(p3.close).not.toHaveBeenCalled();
+  next.close();
+  expect(vi.getTimerCount()).toBe(0);
+});
+it("holds startup audio during provider backpressure and sends commit only after all frames", () => {
+  const hooks = createSpeechHooks("buffered-provider", "key"),
+    peer = makePeer();
+  hooks.open(peer);
+  emit("connected");
+  instances[0]!.bufferedAmount = 70000;
+  const frame = new Uint8Array(1024);
+  hooks.message(peer, {
+    rawData: frame,
+    text: () => "",
+    uint8Array: () => frame,
+  });
+  hooks.message(peer, commit);
+  expect(peer.close).not.toHaveBeenCalled();
+  expect(instances[0]!.send).not.toHaveBeenCalled();
+  instances[0]!.bufferedAmount = 0;
+  vi.advanceTimersByTime(16);
+  expect(instances[0]!.send.mock.calls).toEqual([
+    [frame],
+    ['{"type":"commit"}'],
+  ]);
+  hooks.close();
+});
+it("accepts speech captured during authentication and provider startup without resetting the rate clock", () => {
+  const receivedAt = Date.now();
+  vi.advanceTimersByTime(3000); // Simulated owned-board / credential lookup.
+  const hooks = createSpeechHooks("early-stream", "key", receivedAt),
+    peer = makePeer();
+  hooks.open(peer);
+  vi.advanceTimersByTime(2000); // Simulated provider handshake.
+  emit("connected");
+  const frame = new Uint8Array(1024);
+  for (let i = 0; i < 156; i++)
+    hooks.message(peer, {
+      rawData: frame,
+      text: () => "",
+      uint8Array: () => frame,
+    });
+  expect(peer.close).not.toHaveBeenCalled();
+  expect(instances[0]!.send).toHaveBeenCalledTimes(156);
+  hooks.message(peer, commit);
+  expect(instances[0]!.send).toHaveBeenLastCalledWith('{"type":"commit"}');
+  hooks.close();
+});
 it("streams PCM, commits on release, deduplicates and settles final transcripts", () => {
   const hooks = createSpeechHooks("stream-a", "test-key"),
     peer = makePeer();

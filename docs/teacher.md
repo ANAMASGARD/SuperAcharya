@@ -50,7 +50,7 @@ Graph tools invoke the public `executeAgentToolCall` authorization pipeline. Man
 
 The drawing controller appends editable Excalidraw text below existing content, using the handwriting font where glyphs are supported. It preserves original equation text and turn/step metadata, updates the existing SaveQueue, then reads/acknowledges saved results. Duplicate delivery does not add duplicate elements; modified existing teacher text is preserved and reported as a conflict. Native undo works for each applied step.
 
-The tutor streams an array of validated teaching lines. Each new item contains one complete English statement or textbook formula and its own short narration; continuation items can omit the heading. The first complete item can enter playback before the remaining lesson has finished generating. The browser writes and explains one line at a time, advancing only after actual playback and saved-scene acknowledgement. One following item's narration is prepared ahead to reduce gaps. Incomplete JSON and partial formulas never reach the canvas; failed or truncated generations preserve already written work and report an incomplete lesson. Lessons are bounded to 12 line operations.
+The tutor streams an array of validated teaching lines. Each new item contains one complete English statement or textbook formula and its own explanatory narration (up to 600 characters); continuation items can omit the heading. The first complete item can enter playback before the remaining lesson has finished generating. The browser writes and explains one line at a time, advancing only after actual playback and saved-scene acknowledgement. One following item's narration is prepared ahead to reduce gaps. Incomplete JSON and partial formulas never reach the canvas; failed or truncated generations preserve already written work and report an incomplete lesson. Lessons are bounded to 12 line operations.
 
 This is progressive line rendering, **not pen-stroke or character-by-character handwriting animation**. Formula lines use the source-backed MathJax typesetter described below. Structured diagrams, semantic undo actions, formal symbolic verification, and comprehensive subject/curriculum correctness remain future work. The model is prompted for mathematics, physics and chemistry; that does not establish universal accuracy.
 
@@ -77,3 +77,47 @@ Equation-only board lines use `$$...$$` with bounded TeX. A lazy MathJax 3.2.2 S
 Finalized Space-release recordings submit automatically. Mobile Send can finish an active recording and submit only its successful final transcript; partial updates never launch turns. A new utterance waits for interrupted-turn cleanup rather than being silently dropped. The teacher prompt acknowledges known class/subject, asks one useful follow-up, defaults to natural Hindi/Hinglish, and gives a worked solution when requested even after a prior practice preference. Specific browser drawing failures remain visible instead of being replaced by a generic stream error. Vite prebundles the MathJax CommonJS entry points used by the lazy renderer.
 
 Board language is English independently of narration language: generated headings, prose, clarification text and word labels within formulas use English and standard textbook notation. Accepted responseLanguage controls narration only (Hindi/Hinglish/English). Historical board elements and the student's own writing are not translated or rewritten. Mixed English prose plus double-dollar formula spans are typeset as a single source-backed formula, with escaped text labels, instead of leaking raw delimiters onto the board.
+
+## Question-aware static visual templates
+
+Teaching steps optionally include `visual: { version: 1, kind, angleDegrees }`.
+Kinds currently implemented are `right-triangle`, `unit-circle`, `sine-cosine`,
+`parabola`, `ellipse`, and `hyperbola`. The angle is bounded to 5–85 degrees.
+The existing enqueue/list/ack actions carry this validated specification; no
+separate write API is introduced. Element IDs include deterministic visual
+components, and acknowledgement verifies saved geometry and specification fields.
+
+The tutor selects a visual only when relevant and uses null for ordinary algebra
+and conversational turns. These are static native Excalidraw elements, with
+semantic component metadata included in question capture. They export and save
+as ordinary editable scene elements; no external image storage is required.
+Current graph templates are the standard equations y=x², x²/4+y²=1,
+x²−y²=1, and sine/cosine in radians. They do not represent arbitrary functions.
+Interactive JSXGraph widgets, simulations, parameter revision controls and the
+full Follow teacher policy remain pending. The current camera preserves zoom
+but still scrolls to new steps.
+
+## Explaining existing work without redrawing
+
+Input understanding returns an `explainExisting` decision for requests to explain
+an already visible diagram/solution rather than create new work. It uses the
+current capture and conversation, including actual graph labels and units. The
+existing workflow then emits narration-only steps: empty heading/lines and no
+visual. The server discards model-proposed board writes in this mode. These steps
+retain generation/ownership checks and ordered operation acknowledgements against
+the saved board revision, but the renderer does not mutate or reposition the scene.
+No second conversation or audio pipeline is introduced.
+
+The teacher prompt asks for connected explanations, the reason behind each step,
+a recap from question to conclusion, and a useful check-for-understanding question.
+Brief greetings, clarifications, requested short replies, hint-only requests and
+practice questions remain appropriate exceptions. Spoken language follows the
+accepted preference; board writing remains English. Each spoken section is bounded
+to 600 characters, with the existing one-section audio lookahead. Acknowledgement
+allows 120 seconds for playback/save/autoplay recovery; Stop still cancels locally
+immediately. This is prompt guidance, not model fine-tuning or guaranteed pedagogy.
+
+Native diagram lines explicitly carry dimensions derived from their points.
+Excalidraw 0.18.1 otherwise defaults their dimensions to 100, causing the unchanged
+scene to fail the student-edit guard before narration. Genuine edits still reject
+old scene verification. Already interrupted historical turns are not auto-replayed.

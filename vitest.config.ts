@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Exercise the real browser converter, including its JSON color dependency.
+    server: { deps: { inline: [/@excalidraw\/excalidraw/, /open-color/] } },
     env: { DATABASE_URL: "pglite:memory" },
     exclude: [
       "**/node_modules/**",

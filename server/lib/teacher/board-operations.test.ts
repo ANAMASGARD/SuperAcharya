@@ -266,3 +266,107 @@ it("saves source-backed typeset mathematics without private image storage and ve
     (await getBoard(owner, board.id)).scene.elements[1]?.customData,
   ).toEqual({ equation: { version: 1, latex } });
 });
+
+it("verifies every saved triangle component before acknowledging a visual", async () => {
+  const { visualParts } = await import("../../../shared/teacher-visual");
+  const { input, board } = await setup();
+  const visual = {
+    version: 1 as const,
+    kind: "right-triangle" as const,
+    angleDegrees: 30,
+  };
+  const visualStep = {
+    heading: "",
+    lines: ["Opposite and adjacent are relative to θ."],
+    narration: "Look at the triangle.",
+    visual,
+  };
+  const op = await enqueueTeachingStep(owner, { ...input, step: visualStep });
+  const parts = visualParts(visual);
+  expect(op.elementIds).toHaveLength(parts.length + 1);
+  const elements = [
+    {
+      id: op.elementIds[0]!,
+      type: "text" as const,
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 24,
+      version: 1,
+      versionNonce: 1,
+      isDeleted: false,
+      text: visualStep.lines[0]!,
+      originalText: visualStep.lines[0]!,
+    },
+    ...parts.map((part, i) => {
+      const base = {
+        id: op.elementIds[i + 1]!,
+        type: part.type,
+        x: part.x,
+        y: part.y,
+        width: 100,
+        height: 24,
+        version: 1,
+        versionNonce: 1,
+        isDeleted: false,
+        customData: { teacherVisual: visual, component: part.key },
+      };
+      if (part.type === "text")
+        return { ...base, text: part.text, originalText: part.text };
+      const xs = part.points.map((p) => p[0]),
+        ys = part.points.map((p) => p[1]);
+      return {
+        ...base,
+        width: Math.max(...xs) - Math.min(...xs),
+        height: Math.max(...ys) - Math.min(...ys),
+        points: part.points,
+      };
+    }),
+  ];
+  const saved = await saveBoard(owner, {
+    id: board.id,
+    title: board.title,
+    expectedRevision: board.revision,
+    scene: { ...board.scene, elements },
+  });
+  await acknowledgeTeachingStep(owner, {
+    boardId: board.id,
+    turnId: input.turnId,
+    generation: input.generation,
+    operationId: op.id,
+    tabId: "tab-a",
+    result: "applied",
+    savedRevision: saved.revision,
+  });
+  expect(
+    (await listTeachingSteps(owner, board.id, input.turnId))[0]?.status,
+  ).toBe("applied");
+});
+
+it("acknowledges a narration-only step against the unchanged owned board", async () => {
+  const { input, turn, board } = await setup();
+  const operation = await enqueueTeachingStep(owner, {
+    ...input,
+    step: {
+      heading: "",
+      lines: [],
+      narration: "The blue curve shows sine; let us examine it together.",
+      visual: null,
+    },
+  });
+  expect(operation.elementIds).toEqual([]);
+  expect(
+    (
+      await acknowledgeTeachingStep(owner, {
+        boardId: board.id,
+        turnId: turn.id,
+        generation: turn.generation,
+        operationId: operation.id,
+        tabId: "tab-a",
+        result: "applied",
+        savedRevision: board.revision,
+      })
+    ).status,
+  ).toBe("applied");
+  expect((await getBoard(owner, board.id)).scene).toEqual(board.scene);
+});

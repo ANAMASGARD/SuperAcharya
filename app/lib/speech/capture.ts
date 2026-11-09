@@ -1,9 +1,10 @@
-import { appPath } from "@agent-native/core/client/api-path";
 import {
   MAX_SPEECH_SECONDS,
   MAX_STREAM_SECONDS,
   SPEECH_SAMPLE_RATE,
 } from "@shared/speech";
+
+import { ReadyMicrophone } from "./microphone";
 
 export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   const count = Math.floor((samples.length * SPEECH_SAMPLE_RATE) / sampleRate);
@@ -55,25 +56,30 @@ export async function startCapture(
   onLevel: (level: number) => void,
   onLimit: () => void,
   onPcm?: (pcm: Uint8Array) => void,
+  microphone?: ReadyMicrophone,
 ): Promise<Capture> {
   if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext)
     throw new Error(
       "Microphone capture requires HTTPS (or localhost) and a supported browser.",
     );
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      channelCount: 1,
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-  });
-  const stopTracks = () => stream.getTracks().forEach((track) => track.stop());
+  const device = microphone ?? new ReadyMicrophone();
+  let lease: Awaited<ReturnType<ReadyMicrophone["acquire"]>>;
+  try {
+    lease = await device.acquire(signal);
+  } catch (error) {
+    if (!microphone) device.dispose();
+    throw error;
+  }
+  const { stream } = lease;
+  const stopTracks = () => {
+    lease.release();
+    if (!microphone) device.dispose();
+  };
   if (signal.aborted) {
     stopTracks();
     throw new DOMException("Cancelled", "AbortError");
   }
-  let context: AudioContext | undefined;
+  const { context } = lease;
   let node: AudioWorkletNode | undefined;
   let source: MediaStreamAudioSourceNode | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -84,23 +90,16 @@ export async function startCapture(
   const cancel = () => {
     finished = true;
     clearTimeout(timer);
-    stopTracks();
     source?.disconnect();
     node?.disconnect();
     node?.port.close();
-    if (context && context.state !== "closed")
-      void context.close().catch(() => {});
+    stopTracks();
     signal.removeEventListener("abort", cancel);
     flush?.();
     chunks = [];
   };
   signal.addEventListener("abort", cancel, { once: true });
   try {
-    context = new AudioContext({ sampleRate: SPEECH_SAMPLE_RATE });
-    if (context.sampleRate !== SPEECH_SAMPLE_RATE)
-      throw new Error("This browser cannot capture 16 kHz speech.");
-    await context.resume();
-    await context.audioWorklet.addModule(appPath("/speech-capture.worklet.js"));
     signal.throwIfAborted();
     source = context.createMediaStreamSource(stream);
     node = new AudioWorkletNode(context, "speech-capture", {
@@ -146,7 +145,8 @@ export async function startCapture(
       finish: async () => {
         if (finished) throw new DOMException("Cancelled", "AbortError");
         clearTimeout(timer);
-        stopTracks();
+        // Cut off input immediately, retaining only the worklet's last batch.
+        source?.disconnect();
         await new Promise<void>((resolve) => {
           const fallback = setTimeout(resolve, 200);
           flush = () => {

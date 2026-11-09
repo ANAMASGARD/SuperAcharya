@@ -108,6 +108,12 @@ export const teacherStreamRequestSchema = cancelTeacherSchema.extend({
 export const teacherStreamEventSchema = z.discriminatedUnion("type", [
   teacherAudioSchema,
   z.object({
+    type: z.literal("teacher-visual-ready"),
+    turnId: boardIdSchema,
+    generation: boardIdSchema,
+    operationId: z.string().min(1),
+  }),
+  z.object({
     type: z.literal("done"),
     turnId: boardIdSchema,
     generation: boardIdSchema,

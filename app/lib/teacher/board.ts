@@ -5,6 +5,7 @@ import {
   getCommonBounds,
 } from "@excalidraw/excalidraw";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { teachingElementCount } from "@shared/teacher-board";
 import type {
   CapturedQuestion,
   TeachingOperation,
@@ -15,6 +16,11 @@ import {
   matchesTeachingLine,
   generatedEquation,
 } from "@shared/teacher-math";
+import {
+  visualSpecSchema,
+  visualParts,
+  matchesVisualPart,
+} from "@shared/teacher-visual";
 
 import { equationFile } from "./math";
 
@@ -42,13 +48,20 @@ export async function captureQuestion(
         (!selectedElementIds.length || selectedElementIds.includes(element.id)),
     );
   const text = elements
-    .flatMap((element) =>
-      element.type === "text"
+    .flatMap((element) => {
+      const visual = visualSpecSchema.safeParse(
+        element.customData?.teacherVisual,
+      );
+      if (visual.success)
+        return [
+          `Diagram ${JSON.stringify(visual.data)}; selected component: ${String(element.customData?.component ?? "whole")}. Current geometry is also shown in the capture; student edits take precedence.`,
+        ];
+      return element.type === "text"
         ? [element.originalText]
         : generatedEquation(element)
           ? [`Equation: ${generatedEquation(element)!.latex}`]
-          : [],
-    )
+          : [];
+    })
     .join("\n")
     .slice(0, 12000);
   let image: string | null = null;
@@ -109,6 +122,9 @@ export async function applyTeachingStep(
   operation: TeachingOperation,
   isActive: () => boolean,
 ) {
+  if (!isActive()) throw new Error("Teacher turn stopped.");
+  // Narration-only follow-ups preserve the existing diagram and viewport.
+  if (teachingElementCount(operation.step) === 0) return;
   // Load the handwriting font before measuring newly generated equations.
   await document.fonts.load('24px "Excalifont"');
   await document.fonts.load('28px "Excalifont"');
@@ -120,13 +136,22 @@ export async function applyTeachingStep(
   const lines = teachingStepTexts(operation.step);
   if (existing.length) {
     if (
-      existing.length !== lines.length ||
+      existing.length !== teachingElementCount(operation.step) ||
       !operation.elementIds.every((id, index) =>
         existing.some(
           (element) =>
             element.id === id &&
             !element.isDeleted &&
-            matchesTeachingLine(element, lines[index]!),
+            (index < lines.length
+              ? matchesTeachingLine(element, lines[index]!)
+              : Boolean(
+                  operation.step.visual &&
+                  matchesVisualPart(
+                    element,
+                    visualParts(operation.step.visual)[index - lines.length]!,
+                    operation.step.visual,
+                  ),
+                )),
         ),
       )
     )
@@ -207,9 +232,58 @@ export async function applyTeachingStep(
     y += (element[0]?.height ?? 40) + 20;
     elements.push(...element);
   }
+  if (operation.step.visual) {
+    for (const [index, part] of visualParts(operation.step.visual).entries()) {
+      const common = {
+        id: operation.elementIds[lines.length + index]!,
+        x: bounds[0] + part.x,
+        y: y + part.y,
+        strokeColor: part.key === "cosine" ? "#c92a2a" : "#1864ab",
+        roughness: 0,
+        strokeWidth: 2,
+        groupIds: [operation.id],
+        customData: {
+          teacherVisual: operation.step.visual,
+          component: part.key,
+          teachingStepId: operation.id,
+          teacherGeneration: operation.generation,
+        },
+      };
+      elements.push(
+        ...convertToExcalidrawElements(
+          [
+            part.type === "text"
+              ? {
+                  ...common,
+                  type: "text",
+                  text: part.text,
+                  originalText: part.text,
+                  fontSize: 18,
+                  fontFamily: 5,
+                }
+              : {
+                  ...common,
+                  type: "line",
+                  points: part.points,
+                  // Excalidraw 0.18.1 does not derive line dimensions from supplied points.
+                  // Explicit dimensions must agree with the canonical geometry on replay
+                  // and saved-scene verification, before narration can start.
+                  width:
+                    Math.max(...part.points.map(([x]) => x)) -
+                    Math.min(...part.points.map(([x]) => x)),
+                  height:
+                    Math.max(...part.points.map(([, y]) => y)) -
+                    Math.min(...part.points.map(([, y]) => y)),
+                },
+          ],
+          { regenerateIds: false },
+        ),
+      );
+    }
+  }
   editor.updateScene({
     elements: [...editor.getSceneElementsIncludingDeleted(), ...elements],
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
-  editor.scrollToContent(elements, { fitToContent: true, animate: false });
+  editor.scrollToContent(elements, { fitToContent: false, animate: false });
 }

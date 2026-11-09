@@ -1,3 +1,4 @@
+import { APICallError } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { expect, it, vi } from "vitest";
 
@@ -13,11 +14,13 @@ type ModelStream = Awaited<
 type Part = ModelStream extends ReadableStream<infer T> ? T : never;
 const first = {
   heading: "Subtract",
+  visual: null,
   line: "$$x+2-2=5-2$$",
   narration: "Subtract two from both sides.",
 };
 const second = {
   heading: "",
+  visual: null,
   line: "$$x=3$$",
   narration: "Now simplify to get three.",
 };
@@ -30,7 +33,9 @@ const usage = {
   },
   outputTokens: { total: 1, text: 1, reasoning: undefined },
 };
-function fixture() {
+function fixture(
+  firstLine: Omit<typeof first, "visual"> & { visual: unknown } = first,
+) {
   let channel!: ReadableStreamDefaultController<Part>;
   let signal: AbortSignal | undefined;
   model = new MockLanguageModelV3({
@@ -53,7 +58,7 @@ function fixture() {
             controller.enqueue({
               type: "text-delta",
               id: "fixture",
-              delta: `{"elements":[${JSON.stringify(first)},{`,
+              delta: `{"elements":[${JSON.stringify(firstLine)},{`,
             });
           },
         }),
@@ -94,6 +99,7 @@ it("emits one validated line before the complete model output exists, then the n
     heading: first.heading,
     lines: [first.line],
     narration: first.narration,
+    visual: null,
   });
   expect(prepare).toHaveBeenCalledTimes(1);
   source.finish();
@@ -101,6 +107,7 @@ it("emits one validated line before the complete model output exists, then the n
     heading: "",
     lines: [second.line],
     narration: second.narration,
+    visual: null,
   });
   expect((await lines.next()).done).toBe(true);
   expect(prepare.mock.calls.map((call) => call[1])).toEqual([0, 1]);
@@ -129,4 +136,44 @@ it("does not report a token-limited lesson as complete", async () => {
   source.finish("length");
   await lines.next();
   await expect(lines.next()).rejects.toThrow("incomplete lesson");
+});
+
+it("reports provider request rejection without leaking provider payloads", async () => {
+  model = new MockLanguageModelV3({
+    doStream: async () => {
+      throw new APICallError({
+        message: "private synthetic request details",
+        url: "https://example.test",
+        requestBodyValues: {},
+        statusCode: 400,
+        responseBody: "private synthetic response details",
+      });
+    },
+  });
+  const lines = streamTeachingSteps(options());
+  await expect(lines.next()).rejects.toThrow(
+    "OpenAI could not accept the teaching request. Check the model output schema and server configuration.",
+  );
+});
+
+it("explains existing work through narration without granting new board mutations", async () => {
+  const source = fixture({
+    ...first,
+    visual: { version: 1, kind: "sine-cosine", angleDegrees: 30 },
+  });
+  const lines = streamTeachingSteps({ ...options(), explainExisting: true });
+  expect((await lines.next()).value).toEqual({
+    heading: "",
+    lines: [],
+    narration: first.narration,
+    visual: null,
+  });
+  source.finish();
+  expect((await lines.next()).value).toEqual({
+    heading: "",
+    lines: [],
+    narration: second.narration,
+    visual: null,
+  });
+  expect((await lines.next()).done).toBe(true);
 });

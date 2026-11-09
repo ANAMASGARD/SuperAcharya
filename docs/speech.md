@@ -2,7 +2,7 @@
 
 # Whiteboard speech
 
-The voice control streams microphone audio through the authenticated server to Gnani Prisma `prisma-v3.0`. The realtime protocol uses `wss://api.vachana.ai/stt/v3/stream` with 1,024-byte mono 16 kHz PCM frames at 32 ms cadence. Release/Pause sends `commit` immediately. Sessions support up to 10 minutes of continuous speech on one connection. Audio is never held for 30-second uploads. Finalized phrases append to the live transcript; the panel follows new text unless the user scrolls upward. REST is retained only for explicit recovery of clips up to 29 seconds.
+The voice control streams microphone audio through the authenticated server to Gnani Prisma `prisma-v3.0`. The realtime protocol uses `wss://api.vachana.ai/stt/v3/stream` with 1,024-byte mono 16 kHz PCM frames at 32 ms cadence. Release/Pause immediately stops local capture; `commit` follows all queued PCM in order. Sessions support up to 10 minutes of continuous speech on one connection. Audio is never held for 30-second uploads. Finalized phrases append to the live transcript; the panel follows new text unless the user scrolls upward. REST is retained only for explicit recovery of clips up to 29 seconds.
 
 The provider's realtime documentation lists new and legacy headers. Live verification rejected the newer comma-separated language example; the working request uses `x-model: prisma-v3.0`, `lang_code: indic-auto`, `x-format: codemix`, and `x-min-silence-ms: 300`, and `x-max-speech-s: 5`. The five-second setting bounds provider utterance segmentation, not the recording duration or a guaranteed response deadline. The key is attached only by the server. No browser receives it. See [Gnani realtime documentation](https://docs.gnani.ai/api/STT/stt-websocket.md).
 
@@ -14,20 +14,20 @@ The fallback is shared by authenticated users of the deployment; use scoped keys
 
 ## Interaction and data
 
-Click/tap the idle voice button once to record hands-free; Pause stops and finalizes. The expanded bar replaces the voice logo with a white Close button on the left, with Pause/Play and Send on the right. Close cancels the session. Space anywhere on the active whiteboard holds to speak; key release stops capture and finalizes. A capture-phase listener replaces Excalidraw’s Space-to-pan shortcut. Text fields, contenteditable text, IME composition, modified shortcuts, menus, dialogs and other focused buttons retain their normal keyboard behavior. The hand tool remains available in the toolbar. Enter and Play also offer toggle activation; Pause finalizes the clip. The hover/focus hint says “Hold Space bar to speak.” A visible up-arrow Send button is disabled with an explanation until an LLM is connected; it does not send or clear the transcript. Waveform height follows microphone volume. A red light segment travels around the full pill border while opening the mic or awaiting transcription; reduced motion uses a static red outline. The invitation reads “Ask Acharya a question.”
+Click/tap the idle voice button once to record hands-free; Pause stops and finalizes. The expanded bar replaces the voice logo with a white Close button on the left, with Pause/Play and Send on the right. Close cancels the session. Space anywhere on the active whiteboard holds to speak; key release stops capture and finalizes. A capture-phase listener replaces Excalidraw’s Space-to-pan shortcut. Text fields, contenteditable text, IME composition, modified shortcuts, menus, dialogs and other focused buttons retain their normal keyboard behavior. The hand tool remains available in the toolbar. Enter and Play also offer toggle activation; Pause finalizes the clip. The hover/focus hint says “Hold Space bar to speak.” The up-arrow Send button uses the same finalized-recording identity as automatic submission, avoiding duplicate teaching turns. Waveform height follows microphone volume. A red light segment travels around the full pill border while opening the mic or awaiting transcription; reduced motion uses a static red outline. The invitation reads “Ask Acharya a question.”
 
-Close/Escape, window blur, a hidden tab, app-dialog suspension or unmount cancels the current capture/request and ignores stale results. Release before permission resolves cancels that capture and stops late-granted tracks. Each recording is bounded to 10 minutes, below the provider’s documented 15-minute streaming cap. One realtime session or REST request per user per Node process may run at a time; this is not a distributed quota or provider billing cap. REST requests time out after 20 seconds. Realtime has a 10-second upstream handshake timeout, 620-second relay lifetime and 10-second final-transcript deadline. The client also bounds connection/finalization waits. The provider has no documented commit acknowledgement: pending utterances are tracked, final events are deduplicated/ordered, and the server waits 250 ms after the final pending segment (1.5 seconds if no speech was detected) for late event delivery. This settling policy needs further real-network testing. No automatic retry incurs duplicate transcription costs; an explicit Retry reuses the in-memory clip after a failure only when capture lasted at most 29 seconds. Longer recordings discard the short-clip buffer while continuing to stream; they cannot use REST retry. Already received text remains visible if the stream fails, but unsent/untranscribed audio cannot be recovered.
+Close/Escape, window blur, a hidden tab, app-dialog suspension or unmount cancels the current capture/request and ignores stale results. Release before permission resolves cancels that capture; a late grant stays ready but disconnected from any capture processor and cannot start recording. Leaving the classroom stops even late-granted tracks. Each recording is bounded to 10 minutes, below the provider’s documented 15-minute streaming cap. One realtime session or REST request per user per Node process may run at a time; this is not a distributed quota or provider billing cap. REST requests time out after 20 seconds. Realtime has a 10-second upstream handshake timeout, 620-second relay lifetime and 10-second final-transcript deadline. The client also bounds connection/finalization waits. The provider has no documented commit acknowledgement: pending utterances are tracked, final events are deduplicated/ordered, and the server waits 250 ms after the final pending segment (1.5 seconds if no speech was detected) for late event delivery. This settling policy needs further real-network testing. No automatic retry incurs duplicate transcription costs; an explicit Retry reuses the in-memory clip after a failure only when capture lasted at most 29 seconds. Longer recordings discard the short-clip buffer while continuing to stream; they cannot use REST retry. Already received text remains visible if the stream fails, but unsent/untranscribed audio cannot be recovered.
 
 Audio is never written to SQL/file storage by this app. Transcripts and bounded short-clip retry audio stay in component memory and are cleared on Close or route unmount. Review text is rendered as text, not HTML. Truncated output is identified. STT is not mathematical validation.
 
-The transcript result has `{ transcript, model, detectedLanguage?, truncated }`. This is the future tutor input boundary, not an existing LLM invocation. Nothing is sent to an LLM, no teacher answer is invented, and transcripts are not silently written to the board or agent context.
+The transcript result has `{ transcript, model, detectedLanguage?, truncated }`. Successful nonempty finalized dictation enters the teacher once per recording; partial and truncated transcripts do not auto-submit. Accepted teacher turns persist their input in the owned conversation.
 
 ## Interfaces
 
 - Shared `get-speech-status({ boardId })` action authorizes ownership and returns `ready`, `setup-required`, or `unavailable` plus `model`. Both manual action callers and agents can inspect setup without receiving a credential. `ready` means a key exists, not that the provider has accepted it.
 - `WS /api/whiteboard-speech-stream/:boardId` checks session, origin and drawing ownership before upgrade, resolves the server-side key and forwards bounded PCM. Agent-Native’s Nitro `features.websocket` is enabled. Backpressure, malformed frames, duration/byte caps, timeouts, competing tabs and cancellation close the upstream connection.
 - `POST /api/whiteboard-speech/:boardId` is the authenticated binary-audio upload exception, not a CRUD API. It requires the existing session, same-origin request, owned board and canonical PCM WAV of 0.1–29 seconds. The named browser helper is `transcribeClip`. Provider authentication, invalid replies, timeout and credit/rate errors are redacted into safe messages.
-- Agents cannot start a user's microphone or capture audio remotely. No transcript action/persistence or LLM handoff is implemented in this slice.
+- Agents cannot start a user's microphone or capture audio remotely. Finalized dictation reaches the owned teaching-turn admission action; partial microphone frames do not.
 
 Live synthetic English speech succeeded with both REST and realtime using the configured key. A single realtime probe returned its transcript 261 ms after release; this excludes the application proxy/settling time and is not a general latency promise. Both synthetic math transcripts misheard part of the equation. Hindi/Hinglish recognition, physical microphone quality and authenticated browser end-to-end behavior still require validation. Private image storage remains unrelated and deferred.
 
@@ -119,3 +119,35 @@ lease, within the configured 300-second Vercel function limit. This avoids the
 previous 110-second application cutoff for longer lessons; it does not guarantee
 that network connections, browser background execution or all providers last
 that long. Provider and database latency remain variable.
+
+## Classroom microphone readiness
+
+Entering the classroom requests microphone permission, keeps one enabled local
+MediaStream, and preloads the 16 kHz AudioContext/worklet module. The browser's
+microphone indicator can remain on while the classroom is open. Idle input is
+not connected to a capture processor: it is neither collected nor uploaded.
+
+Space/click resumes the prepared audio context in the user gesture and starts
+capture independently of the authenticated Gnani connection. Early PCM is
+buffered only in memory (at most twelve seconds) until the connection is ready.
+The browser and relay drain bounded queues under backpressure; commit stays
+behind all audio frames. The relay's rate clock starts when the request arrives,
+including authentication and provider setup, so legitimate first-word backlog
+is not rejected as an excessive-rate stream. Rate, byte, duration, ownership and
+concurrent-session limits remain enforced; stalled queues fail rather than grow
+indefinitely or silently discard audio.
+
+Release disconnects input immediately, flushes the final worklet batch and
+finalizes the transcript, even when the connection is still opening. Capture
+nodes and buffers are cleared while the microphone and audio context stay warm
+for the next turn. Close/blur/hidden-tab capture cancellation discards pending
+audio. Leaving the drawing releases the tracks/context, including late grants.
+Permission denial does not retry in a loop; an explicit speaking action retries.
+Browser permission, device availability or OS suspension can still cause delay.
+
+Verification used synthetic audio through the real browser AudioWorklet: ten
+prepared captures, one device acquisition, no dropped frames and no frames
+between captures. First PCM arrived in at most 42 ms in that local run with a
+simulated 500 ms connection delay; this is not a physical-device/network SLA.
+A separate live Gnani relay probe accepted startup backlog and returned a real
+nonempty transcript. Authenticated physical-microphone testing remains separate.

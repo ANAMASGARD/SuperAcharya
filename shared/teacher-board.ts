@@ -1,15 +1,20 @@
 import { z } from "zod";
 
+import { visualSpecSchema, visualParts } from "./teacher-visual";
 import { boardIdSchema } from "./whiteboard";
 
 export const teachingStepSchema = z
   .object({
     // Empty on continuation lines; existing multi-line operations remain readable.
     heading: z.string().trim().max(100),
-    lines: z.array(z.string().trim().min(1).max(240)).min(1).max(6),
+    lines: z.array(z.string().trim().min(1).max(240)).max(6),
     narration: z.string().trim().min(1).max(600),
+    visual: visualSpecSchema.nullable().optional(),
   })
-  .strict();
+  .strict()
+  .refine((step) => step.lines.length > 0 || (!step.heading && !step.visual), {
+    message: "Narration-only steps cannot add headings or diagrams.",
+  });
 export type TeachingStep = z.infer<typeof teachingStepSchema>;
 export function teachingStepTexts(step: TeachingStep): string[] {
   return step.heading ? [step.heading, ...step.lines] : step.lines;
@@ -20,7 +25,9 @@ export const teachingLineSchema = z
   .object({
     heading: z.string().trim().max(100),
     line: z.string().trim().min(1).max(240),
-    narration: z.string().trim().min(1).max(360),
+    narration: z.string().trim().min(1).max(600),
+    // Strict provider output requires every key; no diagram is represented by null.
+    visual: visualSpecSchema.nullable(),
   })
   .strict();
 export const boardCaptureMetadataSchema = z
@@ -70,3 +77,10 @@ export const acknowledgeTeachingStepSchema = z
     savedRevision: z.string().min(1).max(128).optional(),
   })
   .strict();
+
+export function teachingElementCount(step: TeachingStep) {
+  return (
+    teachingStepTexts(step).length +
+    (step.visual ? visualParts(step.visual).length : 0)
+  );
+}

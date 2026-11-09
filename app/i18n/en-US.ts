@@ -40,6 +40,7 @@ const messages = {
   speech: {
     listening: "Ask Acharya a question",
     opening: "Opening microphone…",
+    starting: "Starting listening…",
     loading: "Transcribing…",
     again: "Ask Acharya a question",
     error: "Speech unavailable",

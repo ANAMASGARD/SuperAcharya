@@ -10,7 +10,10 @@ import { transcribeClip } from "@/lib/speech/transcribe";
 import VoicePreview from "./VoicePreview";
 vi.mock("@/lib/speech/capture", () => ({ startCapture: vi.fn() }));
 vi.mock("@/lib/speech/transcribe", () => ({ transcribeClip: vi.fn() }));
-vi.mock("@/lib/speech/stream", () => ({ openSpeechStream: vi.fn() }));
+vi.mock("@/lib/speech/stream", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/speech/stream")>()),
+  openSpeechStream: vi.fn(),
+}));
 const liveFinish = vi.fn();
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 let root: Root;
@@ -64,6 +67,38 @@ afterEach(async () => {
 });
 
 describe("microphone control", () => {
+  it("captures immediately while STT connects and submits the first words after release", async () => {
+    let connect!: (
+      stream: Awaited<ReturnType<typeof openSpeechStream>>,
+    ) => void;
+    vi.mocked(openSpeechStream).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          connect = resolve;
+        }),
+    );
+    const send = vi.fn();
+    const finalized = vi.fn();
+    await act(async () =>
+      root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+    );
+    await key("keydown");
+    expect(startCapture).toHaveBeenCalledOnce();
+    expect(phase()).toBe("active");
+    const pcm = new Uint8Array([1, 2, 3, 4]);
+    await act(async () => vi.mocked(startCapture).mock.calls[0]![3]?.(pcm));
+    await key("keyup");
+    expect(finish).toHaveBeenCalledOnce();
+    expect(phase()).toBe("loading");
+    expect(finalized).not.toHaveBeenCalled();
+    await act(async () =>
+      connect({ send, finish: liveFinish, cancel: vi.fn() }),
+    );
+    expect(send).toHaveBeenCalledExactlyOnceWith(pcm);
+    expect(liveFinish).toHaveBeenCalledOnce();
+    expect(finalized).toHaveBeenCalledOnce();
+    expect(phase()).toBe("paused");
+  });
   it("hands off only a successful final recording once and shares its ID with manual Send", async () => {
     const finalized = vi.fn();
     await act(async () =>

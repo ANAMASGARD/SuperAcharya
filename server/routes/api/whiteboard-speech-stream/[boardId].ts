@@ -22,6 +22,7 @@ const providerEvent = z.object({
   detected_language_code: z.string().max(32).optional(),
 });
 export default defineWebSocketHandler(async (event) => {
+  const receivedAt = Date.now();
   const session = await getSession(event);
   if (!session?.email)
     throw createError({ statusCode: 401, message: "Sign in to use speech." });
@@ -42,7 +43,7 @@ export default defineWebSocketHandler(async (event) => {
       return gnaniKey();
     },
   );
-  return createSpeechHooks(owner, key);
+  return createSpeechHooks(owner, key, receivedAt);
 });
 
 type SpeechPeer = {
@@ -50,16 +51,25 @@ type SpeechPeer = {
   close: (code?: number, reason?: string) => unknown;
   context: Record<string, unknown>;
 };
-export function createSpeechHooks(owner: string, key: string) {
+export function createSpeechHooks(
+  owner: string,
+  key: string,
+  receivedAt = Date.now(),
+) {
   let upstream: WebSocket | undefined;
   let timeout: ReturnType<typeof setTimeout> | undefined;
   let settle: ReturnType<typeof setTimeout> | undefined;
+  let drainTimer: ReturnType<typeof setTimeout> | undefined;
+  let frames: Uint8Array[] = [];
+  let queuedBytes = 0;
+  let blockedSince: number | undefined;
+  let drain = () => {};
   let claimed = false,
     closed = false,
     ready = false,
+    commitRequested = false,
     committed = false;
-  let bytes = 0,
-    started = 0;
+  let bytes = 0;
   const pending = new Set<string>();
   const segments = new Map<string, { text: string; index: number }>();
   let language: string | undefined;
@@ -77,6 +87,9 @@ export function createSpeechHooks(owner: string, key: string) {
     closed = true;
     clearTimeout(timeout);
     clearTimeout(settle);
+    clearTimeout(drainTimer);
+    frames = [];
+    queuedBytes = 0;
     if (claimed) active.delete(owner);
     if (upstream?.readyState === WebSocket.OPEN) upstream.close();
     else upstream?.terminate();
@@ -111,6 +124,39 @@ export function createSpeechHooks(owner: string, key: string) {
         clearTimeout(settle);
         if (committed && pending.size === 0)
           settle = setTimeout(complete, segments.size ? 250 : 1500);
+      };
+      drain = () => {
+        clearTimeout(drainTimer);
+        if (closed || !upstream || !ready) return;
+        try {
+          while (frames.length && upstream.bufferedAmount < 32768) {
+            const frame = frames.shift()!;
+            queuedBytes -= frame.byteLength;
+            upstream.send(frame);
+          }
+          if (frames.length) {
+            blockedSince ??= Date.now();
+            if (Date.now() - blockedSince > 12000) {
+              fail("Speech connection is too slow. Please try again.");
+              return;
+            }
+            drainTimer = setTimeout(drain, 16);
+          } else {
+            blockedSince = undefined;
+            if (commitRequested && !committed) {
+              committed = true;
+              upstream.send(JSON.stringify({ type: "commit" }));
+              clearTimeout(timeout);
+              timeout = setTimeout(
+                () => fail("Final transcription timed out. Retry the clip."),
+                10000,
+              );
+              settleResult();
+            }
+          }
+        } catch {
+          fail("Gnani speech disconnected. Please try again.");
+        }
       };
       timeout = setTimeout(
         () => fail("Speech session timed out. Please try again."),
@@ -160,7 +206,6 @@ export function createSpeechHooks(owner: string, key: string) {
         }
         if (message.type === "connected") {
           ready = true;
-          started = Date.now();
           peer.send(JSON.stringify({ type: "ready" }));
         }
         if (message.type === "speech_start") {
@@ -188,15 +233,9 @@ export function createSpeechHooks(owner: string, key: string) {
       // No commit acknowledgement exists in this protocol. Allow late speech_start
       // frames to arrive before settling an otherwise completed/empty segment set.
       peer.context.commitSpeech = () => {
-        if (!ready || committed || closed) return;
-        committed = true;
-        upstream?.send(JSON.stringify({ type: "commit" }));
-        clearTimeout(timeout);
-        timeout = setTimeout(
-          () => fail("Final transcription timed out. Retry the clip."),
-          10000,
-        );
-        settleResult();
+        if (!ready || commitRequested || closed) return;
+        commitRequested = true;
+        drain();
       };
     },
     message(
@@ -227,17 +266,21 @@ export function createSpeechHooks(owner: string, key: string) {
       const pcm = message.uint8Array();
       bytes += pcm.length;
       if (
-        committed ||
+        commitRequested ||
         pcm.length !== 1024 ||
         bytes > 16000 * 2 * MAX_STREAM_SECONDS + 1024 ||
-        bytes > ((Date.now() - started) / 1000 + 2) * 32000 ||
-        upstream.bufferedAmount > 65536
+        // Capture starts with the request, while auth/provider setup runs.
+        // Keep the original bounded rate budget for that legitimate backlog.
+        bytes > ((Date.now() - receivedAt) / 1000 + 2) * 32000 ||
+        queuedBytes + pcm.length > 32000 * 12
       ) {
         cleanup();
         peer.close(1008, "Invalid audio stream");
         return;
       }
-      upstream.send(pcm);
+      frames.push(new Uint8Array(pcm));
+      queuedBytes += pcm.length;
+      drain();
     },
     close() {
       cleanup();
