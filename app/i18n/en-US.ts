@@ -1,4 +1,19 @@
 const messages = {
+  pwa: {
+    install: "Install Acharya",
+    status: "App connection and updates",
+    offline:
+      "Offline \u2014 keep this drawing open. Cloud saves and teaching need a connection.",
+    update: "An update is ready. Save your drawing before reloading.",
+    reload: "Reload app",
+    unavailable:
+      "App installation is unavailable. You can continue in this browser.",
+    instructions:
+      "In Chrome or Edge, choose Install app from the browser menu. On iPhone or iPad, open this page in Safari, tap Share, then Add to Home Screen.",
+    requirements:
+      "Installation requires HTTPS or localhost and a supporting browser. Drawings, sign-in and AI teaching need an internet connection.",
+  },
+
   teacher: {
     open: "Open Acharya conversation",
     title: "Ask Acharya",

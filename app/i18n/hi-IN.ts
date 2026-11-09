@@ -1,4 +1,16 @@
 const messages = {
+  pwa: {
+    install: "आचार्य इंस्टॉल करें",
+    status: "ऐप कनेक्शन और अपडेट",
+    offline: "आप ऑफलाइन हैं — ड्रॉइंग खुली रखें। सेव करने और पढ़ाई के लिए इंटरनेट चाहिए।",
+    update: "अपडेट तैयार है। रीलोड करने से पहले ड्रॉइंग सेव करें।",
+    reload: "ऐप रीलोड करें",
+    unavailable: "ऐप इंस्टॉल नहीं हो सका। इस ब्राउज़र में उपयोग जारी रख सकते हैं।",
+    instructions:
+      "Chrome या Edge के मेनू में Install app चुनें। iPhone या iPad पर Safari में Share, फिर Add to Home Screen चुनें।",
+    requirements:
+      "इंस्टॉल करने के लिए HTTPS या localhost और समर्थित ब्राउज़र चाहिए। ड्रॉइंग, साइन-इन और AI पढ़ाई के लिए इंटरनेट ज़रूरी है।",
+  },
   composerSources: {
     reference: "बातचीत का संदर्भ दें…",
     group: "बातचीत",

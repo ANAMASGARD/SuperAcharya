@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+
 import { agentNative } from "@agent-native/core/vite";
 import { reactRouter } from "@react-router/dev/vite";
 import { defineConfig } from "vite";
@@ -19,10 +22,40 @@ export default defineConfig({
   },
 
   plugins: [
+    {
+      name: "acharya-pwa-worker",
+      apply: "build",
+      generateBundle(_options, bundle) {
+        if (
+          !Object.keys(bundle).some(
+            (name) => name.startsWith("assets/") && name.endsWith(".js"),
+          )
+        )
+          return;
+        const version = createHash("sha256")
+          .update(Object.keys(bundle).sort().join("\n"))
+          .update(readFileSync("scripts/pwa-worker.js"))
+          .update(readFileSync("public/offline.html"))
+          .update(readFileSync("public/manifest.json"))
+          .update(readFileSync("public/pwa/icon-512.png"))
+          .digest("hex")
+          .slice(0, 16);
+        this.emitFile({
+          type: "asset",
+          fileName: "sw.js",
+          source: readFileSync("scripts/pwa-worker.js", "utf8").replace(
+            "__BUILD_ID__",
+            version,
+          ),
+        });
+      },
+    },
     ...reactRouterPlugins(),
     ...agentNativePlugins({
       ssrStubs: ["shiki"],
-      nitro: { features: { websocket: true } },
+      nitro: {
+        features: { websocket: true },
+      },
     }),
     {
       name: "current-markdown-style-dependency",

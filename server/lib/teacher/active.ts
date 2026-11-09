@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-/** The request-owned teacher supports one Node executor, not a distributed worker. */
+/** Local fast-path aborts; SQL generation/expiry checks coordinate separate instances. */
 export const teacherProcessId = randomUUID();
 const controllers = new Map<
   string,

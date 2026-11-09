@@ -41,6 +41,8 @@ import { TAB_ID } from "@/lib/tab-id";
 import { i18nCatalog } from "./i18n";
 
 import stylesheet from "./global.css?url";
+import { PwaProvider, PwaCommandItem } from "@/components/pwa/PwaProvider";
+import "./components/pwa/pwa.css";
 
 configureTracking({
   getDefaultProps: (_name, properties) => ({
@@ -64,7 +66,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta
           name="viewport"
-          content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content"
+          content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
         />
         <script
           suppressHydrationWarning
@@ -75,15 +77,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: LOCALE_INIT_SCRIPT }}
         />
-        <meta name="theme-color" content="#18181B" />
+        <meta name="theme-color" content="#ffdf50" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta
           name="apple-mobile-web-app-status-bar-style"
-          content="black-translucent"
+          content="default"
         />
         <meta name="apple-mobile-web-app-title" content={APP_TITLE} />
-        <link rel="icon" type="image/svg+xml" href={appPath("/favicon.svg")} />
-        <link rel="apple-touch-icon" href={appPath("/icon-180.svg")} />
+        <link rel="icon" type="image/png" href={appPath("/favicon.png")} />
+        <link rel="apple-touch-icon" href={appPath("/pwa/icon-180.png")} />
+        <link rel="manifest" href={appPath("/manifest.json")} />
         <Meta />
         <Links />
       </head>
@@ -181,6 +185,7 @@ function AppContent() {
         </CommandMenu.Group>
         <CommandMenu.Group heading={t("root.commandAppearance")}>
           <ThemeToggleItem />
+          <PwaCommandItem />
         </CommandMenu.Group>
       </CommandMenu>
       )}
@@ -217,7 +222,9 @@ export default function Root() {
             <DbSyncSetup />
           </ClientOnly>
         )}
-        <AppContent />
+        <PwaProvider>
+          <AppContent />
+        </PwaProvider>
       </AppProviders>
     </AppToolkitProvider>
   );

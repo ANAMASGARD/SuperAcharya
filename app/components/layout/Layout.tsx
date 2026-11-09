@@ -161,7 +161,7 @@ function LayoutShell({ children }: LayoutProps) {
 
   return (
     <HeaderActionsProvider>
-      <div className="agent-layout-shell chat-layout-shell flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <div className="agent-layout-shell chat-layout-shell flex h-dvh w-full overflow-hidden bg-background text-foreground">
         {settingsOwnsChrome || boardOwnsChrome ? null : (
           <div
             data-collapsed={sidebarCollapsed ? "true" : "false"}

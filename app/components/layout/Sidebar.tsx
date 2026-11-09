@@ -1,3 +1,4 @@
+import { appPath } from "@agent-native/core/client/api-path";
 import { useT } from "@agent-native/core/client/i18n";
 import { OrgSwitcher } from "@agent-native/toolkit/app/org";
 import { openCommandMenu } from "@agent-native/toolkit/app/shared";
@@ -149,7 +150,12 @@ export function Sidebar({
                 aria-label={APP_TITLE}
                 className="flex size-8 items-center justify-center rounded border-2 border-sidebar-border bg-main font-black text-xs shadow-shadow"
               >
-                SA
+                <img
+                  src={appPath("/pwa/icon-192.png")}
+                  width={28}
+                  height={28}
+                  alt=""
+                />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right">{APP_TITLE}</TooltipContent>
@@ -157,9 +163,16 @@ export function Sidebar({
         ) : (
           <Link
             to={HOME_PATH}
-            className="truncate text-sm font-black uppercase tracking-wide text-sidebar-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+            className="flex min-w-0 items-center gap-2 text-sm font-black uppercase tracking-wide text-sidebar-accent-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            {APP_TITLE}
+            <img
+              src={appPath("/pwa/icon-192.png")}
+              width={32}
+              height={32}
+              alt=""
+              className="shrink-0"
+            />
+            <span className="truncate">{APP_TITLE}</span>
           </Link>
         )}
       </div>

@@ -202,3 +202,25 @@ describe("owned teaching turns", () => {
     expect((await getTeacherSession(alice, id))?.context.subject).toBe("Math");
   });
 });
+
+it("attaches a turn admitted by another instance and preserves its active status", async () => {
+  const id = await create();
+  const turn = await admitTeacherTurn(alice, question(id));
+  await getDbExec().execute({
+    sql: "UPDATE teacher_turns SET process_id = $1 WHERE id = $2",
+    args: ["another-instance", turn.id],
+  });
+  const attached = await attachTeacherTurn(
+    alice,
+    id,
+    turn.id,
+    turn.generation,
+    "tab-a",
+  );
+  expect(attached.status).toBe("running");
+  expect(
+    (await getTeacherSession(alice, id))?.turns.find(
+      (item) => item.id === turn.id,
+    )?.status,
+  ).toBe("running");
+});

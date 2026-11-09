@@ -1,20 +1,57 @@
 {
-  "name": "Superacharya",
-  "short_name": "Superacharya",
-  "description": "Workspace app for Superacharya.",
-  "start_url": "./home",
-  "background_color": "#111111",
-  "theme_color": "#18181B",
+  "id": "./",
+  "name": "Super Acharya",
+  "short_name": "Acharya",
+  "description": "Your shared whiteboard and voice teacher.",
+  "lang": "en",
+  "start_url": "./whiteboard",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#ffdf50",
+  "orientation": "any",
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "icon-192.svg",
+      "src": "pwa/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "icon-512.svg",
+      "src": "pwa/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Whiteboard",
+      "url": "./whiteboard",
+      "icons": [
+        {
+          "src": "pwa/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "url": "./chat"
     }
   ]
 }

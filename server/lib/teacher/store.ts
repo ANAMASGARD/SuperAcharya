@@ -28,8 +28,7 @@ export function visibleTurn(row: TurnRow) {
   return teacherTurnSchema.parse({
     ...row,
     status:
-      !teacherLifecycle.isTerminal(status) &&
-      (row.processId !== teacherProcessId || row.expiresAt < Date.now())
+      !teacherLifecycle.isTerminal(status) && row.expiresAt < Date.now()
         ? "interrupted"
         : status,
   });

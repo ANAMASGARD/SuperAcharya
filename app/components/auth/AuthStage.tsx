@@ -1,3 +1,4 @@
+import { appPath } from "@agent-native/core/client/api-path";
 import type { CSSProperties } from "react";
 import { Link } from "react-router";
 
@@ -126,12 +127,13 @@ export function AuthStage() {
           to={LANDING_PATH}
           className="inline-flex items-center gap-2.5 rounded-lg font-head text-xl leading-none"
         >
-          <span
-            aria-hidden="true"
-            className="grid size-9 place-items-center rounded-lg border-2 border-black bg-black text-base text-primary"
-          >
-            S
-          </span>
+          <img
+            src={appPath("/pwa/icon-192.png")}
+            alt=""
+            width={40}
+            height={40}
+            className="rounded-lg border-2 border-black bg-white"
+          />
           {APP_TITLE}
         </Link>
       </header>

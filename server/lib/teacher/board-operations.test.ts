@@ -135,7 +135,11 @@ it("uses authenticated agent actions, rejects another owner, and does not confus
       })),
     },
   });
-  const waiting = waitForTeachingStep(op.id, new AbortController().signal);
+  const waiting = waitForTeachingStep(
+    owner,
+    op.id,
+    new AbortController().signal,
+  );
   expect(
     (
       await acknowledgeTeachingStep(owner, {
@@ -172,7 +176,22 @@ it("cancels pending commands and rejects stale acknowledgements while preserving
     }),
   ).rejects.toMatchObject({ errorCode: "turn_inactive" });
   const abort = new AbortController(),
-    waiting = waitForTeachingStep("test-cancel", abort.signal);
+    waiting = waitForTeachingStep(owner, "test-cancel", abort.signal);
   abort.abort();
   await expect(waiting).rejects.toThrow("not acknowledged");
+});
+
+it("observes an acknowledgement persisted by another executor without a local notification", async () => {
+  const { input } = await setup();
+  const op = await enqueueTeachingStep(owner, input);
+  const promise = waitForTeachingStep(
+    owner,
+    op.id,
+    new AbortController().signal,
+  );
+  await getDbExec().execute({
+    sql: "UPDATE teacher_operations SET status = $1 WHERE id = $2",
+    args: ["applied", op.id],
+  });
+  await expect(promise).resolves.toBeUndefined();
 });

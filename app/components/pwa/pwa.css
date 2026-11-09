@@ -1,0 +1,106 @@
+.pwa-status {
+  position: fixed;
+  z-index: 90;
+  top: calc(80px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #000;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: #ffdf50;
+  color: #111;
+  box-shadow: 3px 3px 0 #000;
+  font-size: 13px;
+}
+.pwa-status button {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.pwa-install-dialog {
+  color-scheme: light;
+  color: #111;
+  background: #fff;
+}
+.pwa-install-dialog p {
+  color: #333;
+  line-height: 1.6;
+}
+@media (max-width: 600px) {
+  .pwa-status {
+    top: calc(120px + env(safe-area-inset-top, 0px));
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+/* Dynamic viewport follows browser chrome and the on-screen keyboard. */
+.agent-layout-shell {
+  height: 100dvh;
+}
+.whiteboard-editor {
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.whiteboard-editor .board-teacher-panel {
+  overscroll-behavior: contain;
+}
+.whiteboard-editor .board-teacher-panel :is(textarea, select, input) {
+  font-size: 16px;
+}
+.whiteboard-editor .board-teacher-panel form > div {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px), (max-height: 500px) {
+  .whiteboard-editor .board-teacher-panel {
+    bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(
+      100dvh - 230px - env(safe-area-inset-top, 0px) -
+        env(safe-area-inset-bottom, 0px)
+    );
+  }
+  .whiteboard-editor .board-teacher-chat {
+    min-height: 60px;
+  }
+}
+@media (max-height: 500px) {
+  .whiteboard-editor .board-teacher-panel {
+    bottom: 60px;
+    max-height: calc(100dvh - 150px);
+  }
+}
+/* Native tools remain one row; scroll the toolbar instead of clipping tools or
+   shrinking touch targets. Canvas gestures outside this row are unchanged. */
+.whiteboard-editor .excalidraw.excalidraw--mobile .App-toolbar-container {
+  display: flex;
+  justify-content: flex-start;
+  max-width: calc(
+    100vw - 32px - env(safe-area-inset-left, 0px) -
+      env(safe-area-inset-right, 0px)
+  );
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 3px 6px;
+  scrollbar-width: thin;
+  touch-action: pan-x;
+}
+.whiteboard-editor
+  .excalidraw.excalidraw--mobile
+  .App-toolbar-container
+  .Island {
+  flex-shrink: 0;
+}
+.whiteboard-editor
+  .excalidraw.excalidraw--mobile
+  .App-toolbar-container
+  :is(.ToolIcon, .ToolIcon__icon) {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+}

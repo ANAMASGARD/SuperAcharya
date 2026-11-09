@@ -30,11 +30,20 @@ export const operationLifecycle = defineMachine({
   },
 });
 const waiting = new Map<string, (applied: boolean) => void>();
-export function waitForTeachingStep(id: string, signal: AbortSignal) {
+export function waitForTeachingStep(
+  owner: string,
+  id: string,
+  signal: AbortSignal,
+) {
   signal.throwIfAborted();
   return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
     const done = (applied: boolean) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
+      clearTimeout(pollTimer);
       signal.removeEventListener("abort", abort);
       waiting.delete(id);
       applied
@@ -43,8 +52,34 @@ export function waitForTeachingStep(id: string, signal: AbortSignal) {
     };
     const abort = () => done(false);
     const timer = setTimeout(abort, 45_000);
+    // In-process notification is a fast path. SQL remains authoritative when
+    // the acknowledgement is handled by a different serverless instance.
+    const poll = async () => {
+      try {
+        const [operation] = await getDb()
+          .select()
+          .from(teacherOperations)
+          .where(
+            and(
+              eq(teacherOperations.id, id),
+              eq(teacherOperations.ownerEmail, owner),
+            ),
+          );
+        if (settled) return;
+        if (operation && operation.status !== "queued") {
+          done(operation.status === "applied");
+          return;
+        }
+        pollTimer = setTimeout(() => {
+          void poll();
+        }, 500);
+      } catch {
+        done(false);
+      }
+    };
     waiting.set(id, done);
     signal.addEventListener("abort", abort, { once: true });
+    void poll();
   });
 }
 export async function enqueueTeachingStep(

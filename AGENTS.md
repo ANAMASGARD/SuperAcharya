@@ -84,7 +84,7 @@ The long-term scope includes Mathematics, Physics, Chemistry, and Biology, from 
 | Authentication | Existing Agent-Native auth/session integration; do not add Clerk alongside it |
 | Board synchronization | Existing `useDbSync`/SSE mechanism plus durable operation records and action-based reads |
 | Audio transport | Supported custom streaming server routes; provider WebSockets where actually required |
-| Hosting | Render/compatible persistent Node deployment is the initial candidate, not an already completed deployment |
+| Hosting | Vercel through the documented Nitro preset; persistent Node remains an option for longer speech sessions. Setup is not proof of a verified hosted release. |
 | Design | Neo-brutalism, using existing toolkit/UI primitives and styles |
 
 Inspect `package.json`, `pnpm-lock.yaml`, installed source, and local documentation before adding dependencies or relying on an API. Do not reinstall React, create a second application, or assume previously discussed package/model versions are current. Use **pnpm only**; keep the existing lockfile.
@@ -261,7 +261,7 @@ Authorize every lesson/file operation on the server. Enforce upload type/size li
 
 Students may be minors: minimize personal data and retention. Never send credentials, private lesson content, or identifiable student data to unnecessary logs, traces, or public demos. Redact LangSmith and other telemetry; do not assume every trace is safe to upload.
 
-Use the project's documented Node deployment adapter. A persistent Render service is the initial hosting candidate for server workflows and streaming, with Neon/file storage as configured. Do not promise free production hosting, deploy, provision paid resources, or change external services without approval. Verify the actual streaming and persistence behavior of the selected deployment rather than assuming local success proves production readiness.
+Use the project's documented Nitro Vercel deployment adapter with Neon and configured private file storage. A persistent Node service remains an option for speech sessions beyond the selected Vercel plan's duration limit. Do not promise free production hosting, deploy, provision paid resources, or change external services without approval. Verify the actual streaming and persistence behavior of the selected deployment rather than assuming local success proves production readiness.
 
 ## 13. TypeScript, Zod, and code quality
 
@@ -345,3 +345,11 @@ A task is complete only when the requested behavior is implemented, applicable c
 ## Implemented whiteboard capability
 
 The private full-screen editor, shared CRUD actions, revision behavior, binary upload exception, and storage prerequisites are documented in [docs/whiteboard.md](docs/whiteboard.md). Use those actions for both manual and agent access. The Gnani realtime speech, recovery upload and setup contract are documented in [docs/speech.md](docs/speech.md); use `get-speech-status` to check setup for an owned drawing. Teacher/LLM integration and multiplayer remain future work; consult `memory/memory.md` for actual verification and blockers.
+
+
+## 18. PWA and Vercel handoff
+
+- Browser installation uses `public/manifest.json`, Acharya PNG/maskable icons, and the production-only worker emitted from `scripts/pwa-worker.js`. Cache public assets only; never cache sessions, action responses, private drawings/files, audio or transcripts. Preserve manual update activation and never reload unsaved work automatically.
+- `nitro.config.ts` controls the separate production server build. Keep WebSockets enabled there as well as in development; keep the service worker and manifest revalidating. Do not assume Vite plugin options configure the production build.
+- Teacher requests can reach different instances: SQL generation/expiry and operation status are authoritative; in-process maps are fast paths. Do not restore process-ID-based false interruption or a memory-only acknowledgement wait.
+- The user owns the next Vercel deployment. Do not upload/promote further unless requested. Read `docs/vercel-deployment.md` for project, environment, runtime and five-minute Hobby limits. Do not imply that ten-minute speech or native PWA installation has been verified on that host.

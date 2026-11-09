@@ -12,6 +12,7 @@ import {
   attachTeacherTurn,
   finishTeacherTurn,
   ownedTeacherTurn,
+  isTeacherTurnActive,
 } from "../../lib/teacher/store";
 
 export default defineEventHandler(async (event) => {
@@ -95,6 +96,28 @@ export default defineEventHandler(async (event) => {
       event.req.signal.addEventListener("abort", disconnect, { once: true });
       if (event.req.signal.aborted) disconnect();
       const release = registerTeacherRun(turn.id, turn.generation, controller);
+      let monitorStopped = false;
+      let monitorTimer: ReturnType<typeof setTimeout> | undefined;
+      const monitor = async () => {
+        try {
+          const active = await isTeacherTurnActive(
+            owner,
+            turn.boardId,
+            turn.id,
+            turn.generation,
+          );
+          if (!monitorStopped && !active) controller.abort();
+        } catch {
+          if (!monitorStopped) controller.abort();
+        }
+        if (!monitorStopped && !controller.signal.aborted)
+          monitorTimer = setTimeout(() => {
+            void monitor();
+          }, 1000);
+      };
+      monitorTimer = setTimeout(() => {
+        void monitor();
+      }, 1000);
       const timeout = setTimeout(
         () => controller.abort(new Error("Teacher turn timed out.")),
         110_000,
@@ -171,6 +194,8 @@ export default defineEventHandler(async (event) => {
             );
           } finally {
             clearTimeout(timeout);
+            monitorStopped = true;
+            clearTimeout(monitorTimer);
             release();
             event.req.signal.removeEventListener("abort", disconnect);
             if (!closed) {

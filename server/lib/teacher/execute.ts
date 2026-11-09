@@ -210,7 +210,11 @@ export async function executeTeachingTurn(
                 );
               }
             await assertActive();
-            const acknowledgement = waitForTeachingStep(operation.id, signal);
+            const acknowledgement = waitForTeachingStep(
+              owner,
+              operation.id,
+              signal,
+            );
             emit({
               type: "teacher-board-op",
               ...identity,

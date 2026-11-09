@@ -52,6 +52,8 @@ import { nanoid } from "nanoid";
 import { useEffect, useRef, useState } from "react";
 import { useBlocker, useNavigate } from "react-router";
 
+import { PwaBoardMenuItem } from "@/components/pwa/PwaBoardMenuItem";
+import { usePwa } from "@/components/pwa/PwaProvider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,6 +83,7 @@ const message = (error: unknown) =>
 
 export default function BoardEditor({ boardId }: { boardId: string }) {
   const t = useT();
+  const { helpOpen } = usePwa();
   const boardQuery = useActionQuery("get-board", { id: boardId });
   const libraryQuery = useActionQuery("get-board-library", {});
   const listQuery = useActionQuery("list-boards", {});
@@ -692,6 +695,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
           <MainMenu.DefaultItems.ToggleTheme />
           <MainMenu.DefaultItems.ChangeCanvasBackground />
           <MainMenu.DefaultItems.Help />
+          <PwaBoardMenuItem />
           <MainMenu.Separator />
           <MainMenu.Item
             className="board-menu-action"
@@ -725,7 +729,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
       <TeacherPanel
         boardTools={teachingTools}
         boardId={boardId}
-        suspended={dialog !== null || blocker.state === "blocked"}
+        suspended={helpOpen || dialog !== null || blocker.state === "blocked"}
       />
       <span
         role="status"
