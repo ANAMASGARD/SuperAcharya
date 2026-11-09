@@ -12,7 +12,7 @@ CLOCKED_API_KEY=
 SARVAM_API_KEY=
 TEACHER_OPENAI_MODEL=gpt-6-luna
 SARVAM_TTS_SPEAKER=kalpit_en_edtech
-SARVAM_TTS_PACE=1.15
+SARVAM_TTS_PACE=1.25
 ```
 
 Keep existing `GNANI_API_KEY` and database configuration. `pnpm dev` now uses the same framework env loader as production, loading `.env` and `.env.local` before Nitro starts. Explicit shell/deployment values take precedence. No provider key belongs in a `VITE_` variable.
@@ -50,9 +50,11 @@ Graph tools invoke the public `executeAgentToolCall` authorization pipeline. Man
 
 The drawing controller appends editable Excalidraw text below existing content, using the handwriting font where glyphs are supported. It preserves original equation text and turn/step metadata, updates the existing SaveQueue, then reads/acknowledges saved results. Duplicate delivery does not add duplicate elements; modified existing teacher text is preserved and reported as a conflict. Native undo works for each applied step.
 
-This is progressive step rendering, **not pen-stroke animation or a LaTeX renderer**. Equations and chemical notation currently use plain Unicode text. Structured diagrams, semantic undo actions, formal symbolic verification, and comprehensive subject/curriculum correctness remain future work. The model is prompted for mathematics, physics and chemistry; that does not establish universal accuracy.
+The tutor streams an array of validated teaching lines. Each new item contains one complete English statement or textbook formula and its own short narration; continuation items can omit the heading. The first complete item can enter playback before the remaining lesson has finished generating. The browser writes and explains one line at a time, advancing only after actual playback and saved-scene acknowledgement. One following item's narration is prepared ahead to reduce gaps. Incomplete JSON and partial formulas never reach the canvas; failed or truncated generations preserve already written work and report an incomplete lesson. Lessons are bounded to 12 line operations.
 
-Sarvam uses `bulbul:v4-flash`, `kalpit_en_edtech`, pace 1.15, 24 kHz MP3. Browser playback volume is **1.0 (100%)**. This model ignores the provider loudness parameter. One complete short narration unit is assembled from WebSocket audio frames and its final event before playback; arbitrary MP3 fragments are not treated as independently decodable. Text-only conversation queues coherent narration units. Board teaching waits for actual playback completion and saved-scene acknowledgement before advancing. Autoplay blocking exposes a Play button and visible text. Stop clears buffered audio and rejects old-generation output.
+This is progressive line rendering, **not pen-stroke or character-by-character handwriting animation**. Formula lines use the source-backed MathJax typesetter described below. Structured diagrams, semantic undo actions, formal symbolic verification, and comprehensive subject/curriculum correctness remain future work. The model is prompted for mathematics, physics and chemistry; that does not establish universal accuracy.
+
+Sarvam uses `bulbul:v4-flash`, `kalpit_en_edtech`, default pace 1.25, 24 kHz MP3. Browser playback volume is **1.0 (100%)**. This model ignores the provider loudness parameter. One complete short narration unit is assembled from WebSocket audio frames and its final event before playback; arbitrary MP3 fragments are not treated as independently decodable. Text-only conversation queues coherent narration units. Board teaching waits for actual playback completion and saved-scene acknowledgement before advancing. Autoplay blocking exposes a Play button and visible text. Stop clears buffered audio and rejects old-generation output.
 
 ## Ownership and recovery limits
 
@@ -68,7 +70,7 @@ Private image storage remains deferred. Uploaded images must already be durable 
 
 ### Whiteboard-first classroom and textbook notation
 
-The classroom starts a new drawing's first teacher conversation with the requested Hindi greeting through the existing OpenAI/Sarvam path. The stable welcome request ID prevents duplicate admission across mounts/tabs; existing conversations are not greeted again. Browser autoplay restrictions surface a Play teacher voice control. Student questions always capture the board. The compact question composer closes on submission; the classroom no longer displays the right-hand conversation transcript. Clarification questions also become narrated board operations. Completed conversation history is supplied to input understanding and teaching so answers to clarification can continue the lesson.
+Each classroom visit/reload attempts a short OpenAI/Sarvam greeting in the saved spoken language. It uses known class/subject, asks only for missing information, and uses respectful आप in Hindi/Hinglish. One request identity per mounted visit prevents duplicate effect submissions; an already active lesson blocks another greeting, including competing tabs. It does not run Clocked extraction on the internal welcome prompt. Browser autoplay restrictions surface a Play teacher voice control. Student questions always capture the board. The compact question composer closes on submission; the classroom no longer displays the right-hand conversation transcript. Clarification questions also become narrated board operations. Completed conversation history is supplied to input understanding and teaching so answers to clarification can continue the lesson.
 
 Equation-only board lines use `$$...$$` with bounded TeX. A lazy MathJax 3.2.2 SVG renderer bundles its own glyph outlines, enables only base/AMS notation, and rejects external-content/HTML commands and invalid equations. Fractions, roots, Greek symbols and exponents are typeset rather than displayed as code. Each formula is a movable/resizable Excalidraw image with `customData.equation = { version: 1, latex }` and an element-bound generated file ID. Formula source is saved in the scene; SVG bytes are generated locally and regenerated on reopen, never stored in SQL. Normal uploads still require private storage. Save acknowledgement validates the corresponding formula source. This is typesetting, not animated cursor handwriting or a geometry-diagram planner. Existing historic text elements are not rewritten automatically.
 

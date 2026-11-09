@@ -349,10 +349,11 @@ it("preserves editing, IME, modified shortcuts, dialog and button keyboard activ
   expect(startCapture).not.toHaveBeenCalled();
 });
 
-
 it("mobile Send finishes active recording and hands off the finalized result once", async () => {
   const finalized = vi.fn();
-  await act(async () => root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />));
+  await act(async () =>
+    root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+  );
   await act(async () => primary().click());
   expect(phase()).toBe("active");
   const send = host.querySelector<HTMLButtonElement>(".board-voice-send")!;
@@ -360,5 +361,93 @@ it("mobile Send finishes active recording and hands off the finalized result onc
   await act(async () => send.click());
   expect(finish).toHaveBeenCalledTimes(1);
   expect(finalized).toHaveBeenCalledTimes(1);
-  expect(finalized).toHaveBeenCalledWith(expect.objectContaining({ text: result.transcript }));
+  expect(finalized).toHaveBeenCalledWith(
+    expect.objectContaining({ text: result.transcript }),
+  );
+});
+
+it("keeps a teacher turn and its loading border across blur, visibility changes and dialogs", async () => {
+  const interrupt = vi.fn();
+  await act(async () =>
+    root.render(
+      <VoicePreview boardId="drawing" teacherBusy onInterrupt={interrupt} />,
+    ),
+  );
+  await act(async () => {
+    window.dispatchEvent(new Event("blur"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(interrupt).not.toHaveBeenCalled();
+  expect(host.querySelector(".board-voice-loading-border")).not.toBeNull();
+  await act(async () =>
+    root.render(
+      <VoicePreview
+        boardId="drawing"
+        teacherBusy
+        suspended
+        onInterrupt={interrupt}
+      />,
+    ),
+  );
+  expect(interrupt).not.toHaveBeenCalled();
+});
+
+it("does not discard finalized speech processing when focus changes", async () => {
+  const finalized = vi.fn();
+  let complete: (value: typeof result) => void = () => {};
+  liveFinish.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  await act(async () =>
+    root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />),
+  );
+  await key("keydown");
+  await key("keyup");
+  expect(phase()).toBe("loading");
+  await act(async () => window.dispatchEvent(new Event("blur")));
+  expect(phase()).toBe("loading");
+  await act(async () => complete(result));
+  expect(finalized).toHaveBeenCalledOnce();
+});
+
+it("collapses and expands a transcript without interrupting teaching or discarding finalized input", async () => {
+  const finalized = vi.fn(),
+    interrupted = vi.fn();
+  await act(async () =>
+    root.render(
+      <VoicePreview
+        boardId="drawing"
+        onFinalized={finalized}
+        onInterrupt={interrupted}
+      />,
+    ),
+  );
+  await key("keydown");
+  await key("keyup");
+  const interruptionCount = interrupted.mock.calls.length;
+  await click("Collapse transcript");
+  expect(
+    host.querySelector<HTMLElement>(".board-voice-transcript-body")?.hidden,
+  ).toBe(true);
+  expect(
+    host
+      .querySelector('[aria-label="Expand transcript"]')
+      ?.getAttribute("aria-expanded"),
+  ).toBe("false");
+  expect(host.textContent).toContain("Transcript ready.");
+  expect(finalized).toHaveBeenCalledTimes(1);
+  expect(interrupted).toHaveBeenCalledTimes(interruptionCount);
+  await click("Expand transcript");
+  expect(
+    host.querySelector<HTMLElement>(".board-voice-transcript-body")?.hidden,
+  ).toBe(false);
+  expect(host.textContent).toContain(result.transcript);
+  await click("Collapse transcript");
+  await click("Start speaking");
+  expect(
+    host.querySelector(".board-voice-result")?.getAttribute("data-collapsed"),
+  ).not.toBe("true");
 });

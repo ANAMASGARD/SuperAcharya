@@ -1,9 +1,7 @@
-import type { ModelMessage } from "ai";
 import type { z } from "zod";
 
 import type { teacherStreamEventSchema } from "../../../shared/teacher";
 import type { CapturedQuestion } from "../../../shared/teacher-board";
-import { TEACHER_WELCOME_PROMPT } from "../../../shared/teacher-welcome";
 import { listTeachingSteps, waitForTeachingStep } from "./board-operations";
 import { teacherCheckpointer } from "./checkpoints";
 import { teacherCredential, teacherSettings } from "./config";
@@ -11,8 +9,11 @@ import {
   buildTeachingGraph,
   openAITutor,
   understandBoard,
-  prepareTeachingSteps,
+  streamTeachingSteps,
+  speakClarification,
 } from "./graph";
+import { teacherHistory } from "./history";
+import { NarrationBuffer } from "./narration-buffer";
 import { fillLearningContext } from "./providers/clocked";
 import { SarvamNarrator } from "./providers/sarvam";
 import {
@@ -51,13 +52,7 @@ export async function executeTeachingTurn(
     );
   const session = await getTeacherSession(owner, turn.boardId);
   if (!session) throw new Error("Teacher conversation not found.");
-  const history: ModelMessage[] = session.turns
-    .filter((t) => t.status === "completed" && t.id !== turn.id)
-    .slice(-8)
-    .flatMap((t): ModelMessage[] => [
-      { role: "user", content: t.input },
-      { role: "assistant", content: t.response },
-    ]);
+  const history = teacherHistory(session.turns, turn.id);
   const identity = { turnId: turn.id, generation: turn.generation };
   const notice = (message: string) =>
     emit({ type: "teacher-notice", ...identity, message });
@@ -67,6 +62,18 @@ export async function executeTeachingTurn(
     sequence = 0,
     narrationFailed = false;
   const settings = teacherSettings();
+  const stepAudio = new NarrationBuffer(async (text) => {
+    if (!narrator || narrationFailed) return null;
+    try {
+      return await narrator.speak(text);
+    } catch {
+      signal.throwIfAborted();
+      narrationFailed = true;
+      narrator.close();
+      notice("Teacher voice is unavailable. Written steps remain available.");
+      return null;
+    }
+  }, signal);
   const narrate = (text: string) => {
     if (!narrator || narrationFailed || !text.trim()) return;
     const speaker = narrator;
@@ -104,11 +111,8 @@ export async function executeTeachingTurn(
         if (voiceKey)
           narrator = new SarvamNarrator(
             voiceKey,
-            settings.speaker,
-            turn.input === TEACHER_WELCOME_PROMPT ||
-              context.responseLanguage !== "en"
-              ? "hi-IN"
-              : "en-IN",
+            session.context.voice ?? settings.speaker,
+            context.responseLanguage !== "en" ? "hi-IN" : "en-IN",
             signal,
             settings.pace,
           );
@@ -181,20 +185,32 @@ export async function executeTeachingTurn(
                   signal,
                 })
               : Promise.resolve({ input, clarification: "" }),
+          clarify: (question, context) =>
+            speakClarification({
+              key,
+              model: settings.model,
+              question,
+              context,
+              signal,
+            }),
           teach: (input: string, context: typeof session.context) =>
-            prepareTeachingSteps({
+            streamTeachingSteps({
               key,
               model: settings.model,
               input,
               context,
               history,
               signal,
+              prepare: (step, sequence) =>
+                stepAudio.prepare(sequence, step.narration),
             }),
           drawStep: async (
             step: import("../../../shared/teacher-board").TeachingStep,
             stepSequence: number,
           ) => {
             await assertActive();
+            // The stream prefetches one line; clarifications synthesize here.
+            stepAudio.prepare(stepSequence, step.narration);
             const result = await publishTeachingStep(
               owner,
               {
@@ -213,18 +229,7 @@ export async function executeTeachingTurn(
             ).find((item) => item.sequence === stepSequence);
             if (!operation || operation.status !== "queued")
               throw new Error("Teaching step could not be queued.");
-            let audio: string | null = null;
-            if (narrator && !narrationFailed)
-              try {
-                audio = await narrator.speak(step.narration);
-              } catch {
-                signal.throwIfAborted();
-                narrationFailed = true;
-                narrator.close();
-                notice(
-                  "Teacher voice is unavailable. Written steps remain available.",
-                );
-              }
+            const audio = await stepAudio.take(stepSequence, step.narration);
             await assertActive();
             const acknowledgement = waitForTeachingStep(
               owner,

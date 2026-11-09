@@ -224,3 +224,13 @@ it("attaches a turn admitted by another instance and preserves its active status
     )?.status,
   ).toBe("running");
 });
+
+it("persists a supported voice through the owned context action and rejects invalid or foreign updates", async () => {
+  const boardId = await create();
+  const lesson = await ensureTeacherSession(alice, boardId);
+  await updateTeacherContext(alice, {boardId, expectedRevision: lesson.revision, patch: {voice: "kalpit_en_edtech", favoriteVoices: ["shubh_enhi_ads"]}});
+  expect((await getTeacherSession(alice, boardId))?.context.voice).toBe("kalpit_en_edtech");
+  expect((await getTeacherSession(alice, boardId))?.context.favoriteVoices).toEqual(["shubh_enhi_ads"]);
+  await expect(updateTeacherContext(bob, {boardId, expectedRevision: 1, patch: {voice: "shubh_enhi_companion"}})).rejects.toThrow();
+  expect(updateTeacherContextSchema.safeParse({boardId,expectedRevision:1,patch:{voice:"unknown-voice"}}).success).toBe(false);
+});

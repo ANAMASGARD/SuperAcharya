@@ -4,12 +4,25 @@ import { boardIdSchema } from "./whiteboard";
 
 export const teachingStepSchema = z
   .object({
-    heading: z.string().trim().min(1).max(100),
+    // Empty on continuation lines; existing multi-line operations remain readable.
+    heading: z.string().trim().max(100),
     lines: z.array(z.string().trim().min(1).max(240)).min(1).max(6),
     narration: z.string().trim().min(1).max(600),
   })
   .strict();
 export type TeachingStep = z.infer<typeof teachingStepSchema>;
+export function teachingStepTexts(step: TeachingStep): string[] {
+  return step.heading ? [step.heading, ...step.lines] : step.lines;
+}
+
+/** New streamed output is one complete board line plus its own explanation. */
+export const teachingLineSchema = z
+  .object({
+    heading: z.string().trim().max(100),
+    line: z.string().trim().min(1).max(240),
+    narration: z.string().trim().min(1).max(360),
+  })
+  .strict();
 export const boardCaptureMetadataSchema = z
   .object({
     fingerprint: z.string().regex(/^[a-f0-9]{64}$/),

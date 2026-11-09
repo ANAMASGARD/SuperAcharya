@@ -25,5 +25,5 @@ export const teacherSettings = () =>
       // guard:allow-env-credential — Deployment voice identifier, not a credential or user-scoped secret.
       speaker: process.env.SARVAM_TTS_SPEAKER || "kalpit_en_edtech",
       // guard:allow-env-credential — Non-secret deployment speech speed, bounded to the model's supported range.
-      pace: process.env.SARVAM_TTS_PACE || "1.15",
+      pace: process.env.SARVAM_TTS_PACE || "1.25",
     });

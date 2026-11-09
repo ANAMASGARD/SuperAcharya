@@ -124,7 +124,7 @@ describe("Clocked evidence boundary", () => {
 
 it("writes clarification on the board and waits for acknowledgement instead of ending in chat", async () => {
   const drawStep = vi.fn(async () => {});
-  const teach = vi.fn(async () => []);
+  const teach = vi.fn(async function* () {});
   const graph = buildTeachingGraph(new MemorySaver(), {
     assertActive: async () => {},
     orchestrate: async () => ({ context: {}, clarification: "" }),
@@ -155,9 +155,111 @@ it("writes clarification on the board and waits for acknowledgement instead of e
   expect(result.response).toBe("Which angle interval should we use?");
 });
 
-
 it("preserves evidenced class and subject when an introduction has no supported teaching mode", () => {
   const text = "Class twelve maths ask which topic";
-  const field = (value: string) => ({value, start:text.indexOf(value), end:text.indexOf(value)+value.length, confidence:0.99});
-  expect(normalizeClocked(text,{fields:{learnerLevel:field("twelve"),subject:field("maths"),teachingMode:field("ask which topic")}})).toEqual({status:"accepted",patch:{learnerLevel:"twelve",subject:"maths"}});
+  const field = (value: string) => ({
+    value,
+    start: text.indexOf(value),
+    end: text.indexOf(value) + value.length,
+    confidence: 0.99,
+  });
+  expect(
+    normalizeClocked(text, {
+      fields: {
+        learnerLevel: field("twelve"),
+        subject: field("maths"),
+        teachingMode: field("ask which topic"),
+      },
+    }),
+  ).toEqual({
+    status: "accepted",
+    patch: { learnerLevel: "twelve", subject: "maths" },
+  });
+});
+
+it("draws an English clarification with separate spoken narration before waiting for the student", async () => {
+  const drawStep = vi.fn(async () => {});
+  const clarify = vi.fn(
+    async () =>
+      "Synthetic Hindi spoken clarification with theta read naturally",
+  );
+  const graph = buildTeachingGraph(new MemorySaver(), {
+    assertActive: async () => {},
+    orchestrate: async () => ({
+      context: { responseLanguage: "hi" },
+      clarification: "Should theta be between zero and 360 degrees?",
+    }),
+    tutor: async function* () {
+      throw new Error("Must not solve before clarification");
+    },
+    emitText: vi.fn(),
+    clarify,
+    drawStep,
+  });
+  await graph.invoke(
+    { input: "Solve this" },
+    { configurable: { thread_id: "spoken-clarification" } },
+  );
+  expect(clarify).toHaveBeenCalledWith(
+    "Should theta be between zero and 360 degrees?",
+    { responseLanguage: "hi" },
+  );
+  expect(drawStep).toHaveBeenCalledWith(
+    {
+      heading: "Before we continue",
+      lines: ["Should theta be between zero and 360 degrees?"],
+      narration:
+        "Synthetic Hindi spoken clarification with theta read naturally",
+    },
+    0,
+  );
+});
+
+it("draws the first streamed line before later generation finishes and waits for its acknowledgement", async () => {
+  let generated!: () => void, acknowledged!: () => void, drew!: () => void;
+  const later = new Promise<void>((resolve) => {
+    generated = resolve;
+  });
+  const ack = new Promise<void>((resolve) => {
+    acknowledged = resolve;
+  });
+  const firstDrawn = new Promise<void>((resolve) => {
+    drew = resolve;
+  });
+  const drawStep = vi.fn(async (_step, sequence: number) => {
+    if (sequence === 0) {
+      drew();
+      await ack;
+    }
+  });
+  const graph = buildTeachingGraph(new MemorySaver(), {
+    assertActive: async () => {},
+    orchestrate: async () => ({ context: {}, clarification: "" }),
+    tutor: async function* () {
+      throw new Error("Unexpected text-only path");
+    },
+    teach: async function* () {
+      yield {
+        heading: "Subtract",
+        lines: ["x + 2 - 2 = 5 - 2"],
+        narration: "Subtract two.",
+      };
+      await later;
+      yield { heading: "", lines: ["x = 3"], narration: "Simplify." };
+    },
+    emitText: vi.fn(),
+    drawStep,
+  });
+  const run = graph.invoke(
+    { input: "Solve" },
+    { configurable: { thread_id: "streaming-lines" } },
+  );
+  await firstDrawn;
+  generated();
+  await Promise.resolve();
+  expect(drawStep).toHaveBeenCalledTimes(1);
+  acknowledged();
+  const result = await run;
+  expect(drawStep).toHaveBeenCalledTimes(2);
+  expect(result.response).toContain("x = 3");
 });

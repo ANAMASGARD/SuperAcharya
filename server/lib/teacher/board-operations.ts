@@ -8,6 +8,7 @@ import {
   acknowledgeTeachingStepSchema,
   enqueueTeachingStepSchema,
   teachingOperationSchema,
+  teachingStepTexts,
 } from "../../../shared/teacher-board";
 import { matchesTeachingLine } from "../../../shared/teacher-math";
 import { getDb } from "../../db";
@@ -155,7 +156,7 @@ export async function enqueueTeachingStep(
         id,
         ownerEmail: owner,
         tabId: turn.tabId,
-        elementIds: [input.step.heading, ...input.step.lines].map(
+        elementIds: teachingStepTexts(input.step).map(
           (_, index) => `teacher-${id}-${index}`,
         ),
         status: "queued",
@@ -245,7 +246,7 @@ export async function acknowledgeTeachingStep(
         errorCode: "turn_inactive",
       });
     if (input.result === "applied") {
-      const texts = [op.step.heading, ...op.step.lines];
+      const texts = teachingStepTexts(op.step);
       if (
         board.revision !== input.savedRevision ||
         !op.elementIds.every((id, index) =>

@@ -1,6 +1,6 @@
 import { useT } from "@agent-native/core/client/i18n";
-import { ArrowUp, Pause, Play, X } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { ArrowUp, ChevronDown, ChevronUp, Pause, Play, X } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import enUS from "@/i18n/en-US";
@@ -39,14 +39,18 @@ export default function VoicePreview({
   } = useSpeech(boardId, onFinalized);
   const interruptRef = useRef(onInterrupt);
   interruptRef.current = onInterrupt;
+  const [transcriptCollapsed, setTranscriptCollapsed] = useState(false);
+  const transcriptId = useId();
   const start = useCallback(() => {
+    setTranscriptCollapsed(false);
     interruptRef.current?.();
     return startSpeech();
   }, [startSpeech]);
   const held = useRef<"keyboard" | null>(null);
   const primary = useRef<HTMLButtonElement>(null);
-  const transcriptPanel = useRef<HTMLElement>(null);
+  const transcriptPanel = useRef<HTMLDivElement>(null);
   const followTranscript = useRef(true);
+  useEffect(() => setTranscriptCollapsed(false), [boardId]);
   useEffect(() => {
     if (phase === "idle") followTranscript.current = true;
     const panel = transcriptPanel.current;
@@ -114,9 +118,9 @@ export default function VoicePreview({
       }
     };
     const blur = () => {
-      interruptRef.current?.();
       held.current = null;
-      cancel();
+      // Stop microphone capture safely, not a submitted transcript or teacher turn.
+      if (phase === "active" || phase === "requesting") cancel();
     };
     const visibility = () => {
       if (document.hidden) blur();
@@ -141,11 +145,11 @@ export default function VoicePreview({
     };
   }, [pause, cancel, start, busy, phase, suspended]);
   useEffect(() => {
-    if (suspended) {
-      interruptRef.current?.();
+    if (suspended && (phase === "active" || phase === "requesting")) {
+      held.current = null;
       cancel();
     }
-  }, [suspended, cancel]);
+  }, [suspended, phase, cancel]);
 
   const expanded = phase !== "idle";
   const status =
@@ -165,13 +169,15 @@ export default function VoicePreview({
       className="board-voice"
       data-phase={phase}
       hidden={suspended}
-      aria-busy={busy}
+      aria-busy={busy || teacherBusy}
     >
       <span className="board-voice-label" role="status" aria-live="polite">
-        {status}
+        {teacherBusy && !busy && phase !== "active"
+          ? "Acharya is thinking…"
+          : status}
       </span>
       <div className="board-voice-bar">
-        {busy && (
+        {(busy || teacherBusy) && (
           <svg className="board-voice-loading-border" aria-hidden="true">
             <rect x="2" y="2" rx="26" pathLength="100" />
           </svg>
@@ -258,7 +264,11 @@ export default function VoicePreview({
                 className="board-voice-action board-voice-send"
                 aria-label={label("send")}
                 aria-describedby="speech-send-unavailable"
-                disabled={!onFinalized || busy || (phase !== "active" && (!finalized || teacherBusy))}
+                disabled={
+                  !onFinalized ||
+                  busy ||
+                  (phase !== "active" && (!finalized || teacherBusy))
+                }
                 onClick={() => {
                   if (phase === "active") void pause();
                   else if (finalized) onFinalized?.(finalized);
@@ -276,24 +286,62 @@ export default function VoicePreview({
       {(result || error) && (
         <section
           className="board-voice-result"
-          ref={transcriptPanel}
-          onScroll={(event) => {
-            const panel = event.currentTarget;
-            followTranscript.current =
-              panel.scrollHeight - panel.scrollTop - panel.clientHeight < 32;
-          }}
+          data-collapsed={transcriptCollapsed}
           aria-label={label("transcript")}
           onKeyDown={(event) => event.stopPropagation()}
         >
-          {error && <p role="alert">{error}</p>}
-          {result && (
-            <>
-              <p>{result?.transcript || label("empty")}</p>
-              {result?.truncated && <p role="alert">{label("truncated")}</p>}
-              {result?.transcript && (
-                <small>{label(phase === "active" ? "live" : "ready")}</small>
+          <div className="board-voice-result-header">
+            <span>
+              {label(
+                phase === "active"
+                  ? "live"
+                  : result?.transcript
+                    ? "ready"
+                    : "transcript",
               )}
-            </>
+            </span>
+            <Button
+              type="button"
+              size="icon"
+              className="board-voice-transcript-toggle"
+              aria-label={label(
+                transcriptCollapsed ? "expandTranscript" : "collapseTranscript",
+              )}
+              aria-expanded={!transcriptCollapsed}
+              aria-controls={transcriptId}
+              title={label(
+                transcriptCollapsed ? "expandTranscript" : "collapseTranscript",
+              )}
+              onClick={() => setTranscriptCollapsed((value) => !value)}
+            >
+              {transcriptCollapsed ? (
+                <ChevronUp aria-hidden="true" />
+              ) : (
+                <ChevronDown aria-hidden="true" />
+              )}
+            </Button>
+          </div>
+          {error && <p role="alert">{error}</p>}
+          <div
+            id={transcriptId}
+            className="board-voice-transcript-body"
+            hidden={transcriptCollapsed}
+            ref={transcriptPanel}
+            onScroll={(event) => {
+              const panel = event.currentTarget;
+              followTranscript.current =
+                panel.scrollHeight - panel.scrollTop - panel.clientHeight < 32;
+            }}
+          >
+            {result && (
+              <>
+                <p>{result?.transcript || label("empty")}</p>
+                {result?.truncated && <p role="alert">{label("truncated")}</p>}
+              </>
+            )}
+          </div>
+          {transcriptCollapsed && result?.truncated && (
+            <p role="alert">{label("truncated")}</p>
           )}
           {canRetry && (
             <Button type="button" className="board-voice-retry" onClick={retry}>

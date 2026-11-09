@@ -1,4 +1,8 @@
 const messages = {
+  speech: {
+    collapseTranscript: "ट्रांसक्रिप्ट छोटा करें",
+    expandTranscript: "पूरा ट्रांसक्रिप्ट दिखाएँ",
+  },
   pwa: {
     install: "आचार्य इंस्टॉल करें",
     status: "ऐप कनेक्शन और अपडेट",

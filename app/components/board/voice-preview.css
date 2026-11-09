@@ -235,10 +235,11 @@
   left: 50%;
   transform: translateX(-50%);
   width: min(340px, calc(100vw - 32px));
-  max-height: min(240px, 40dvh);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   overflow-wrap: anywhere;
-  padding: 14px;
+  padding: 10px 14px;
   border: 2px solid #000;
   box-shadow: 3px 3px 0 #000;
   background: #fff;
@@ -246,9 +247,33 @@
   border-radius: 12px;
   font-size: 14px;
 }
-.whiteboard-editor .board-voice-result small {
-  display: block;
-  margin-top: 8px;
+.whiteboard-editor .board-voice-result[data-collapsed="true"] {
+  width: min(260px, calc(100vw - 32px));
+}
+.whiteboard-editor .board-voice-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.whiteboard-editor .board-voice .board-voice-transcript-toggle {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 2px solid var(--board-ink, #000);
+  border-radius: 50%;
+  background: var(--board-yellow);
+  color: #000;
+  box-shadow: 2px 2px 0 #000;
+}
+.whiteboard-editor .board-voice-transcript-body {
+  max-height: min(184px, 28dvh);
+  overflow: auto;
+}
+.whiteboard-editor .board-voice-transcript-body[hidden] {
+  display: none;
 }
 .whiteboard-editor .board-voice .board-voice-retry {
   width: auto;

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { teacherVoiceSchema } from "./teacher-voices";
 
 import {
   boardCaptureMetadataSchema,
@@ -8,6 +9,8 @@ import { boardIdSchema } from "./whiteboard";
 
 export const teacherContextSchema = z
   .object({
+    voice: teacherVoiceSchema.optional(),
+    favoriteVoices: z.array(teacherVoiceSchema).max(222).optional(),
     learnerLevel: z.string().trim().min(1).max(80).optional(),
     subject: z.string().trim().min(1).max(80).optional(),
     topic: z.string().trim().min(1).max(160).optional(),

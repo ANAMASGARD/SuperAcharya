@@ -9,6 +9,7 @@ import type {
   CapturedQuestion,
   TeachingOperation,
 } from "@shared/teacher-board";
+import { teachingStepTexts } from "@shared/teacher-board";
 import {
   equationLatex,
   matchesTeachingLine,
@@ -22,6 +23,7 @@ export interface BrowserTeachingTools {
   apply: (
     operation: TeachingOperation,
     isActive: () => boolean,
+    onRendered?: () => void,
   ) => Promise<string>;
 }
 export async function captureQuestion(
@@ -115,7 +117,7 @@ export async function applyTeachingStep(
   const existing = current.filter((element) =>
     operation.elementIds.includes(element.id),
   );
-  const lines = [operation.step.heading, ...operation.step.lines];
+  const lines = teachingStepTexts(operation.step);
   if (existing.length) {
     if (
       existing.length !== lines.length ||
@@ -135,9 +137,10 @@ export async function applyTeachingStep(
   }
   const visible = current.filter((element) => !element.isDeleted);
   const bounds = visible.length ? getCommonBounds(visible) : [40, 40, 40, 40];
-  let y = visible.length ? bounds[3] + 64 : 40;
+  let y = visible.length ? bounds[3] + (operation.step.heading ? 64 : 24) : 40;
   const elements = [];
   for (const [index, text] of lines.entries()) {
+    const isHeading = index === 0 && Boolean(operation.step.heading);
     const id = operation.elementIds[index];
     if (!id) throw new Error("Invalid teaching step element IDs.");
     const latex = equationLatex(text);
@@ -184,11 +187,11 @@ export async function applyTeachingStep(
           y,
           text: wrapBoardText(
             text,
-            index === 0 ? 28 : 24,
+            isHeading ? 28 : 24,
             Math.min(600, Math.max(240, editor.getAppState().width - 80)),
           ),
           originalText: text,
-          fontSize: index === 0 ? 28 : 24,
+          fontSize: isHeading ? 28 : 24,
           fontFamily: 5,
           strokeColor: "#1e1e1e",
           customData: {

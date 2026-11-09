@@ -30,3 +30,92 @@ The transcript result has `{ transcript, model, detectedLanguage?, truncated }`.
 - Agents cannot start a user's microphone or capture audio remotely. No transcript action/persistence or LLM handoff is implemented in this slice.
 
 Live synthetic English speech succeeded with both REST and realtime using the configured key. A single realtime probe returned its transcript 261 ms after release; this excludes the application proxy/settling time and is not a general latency promise. Both synthetic math transcripts misheard part of the equation. Hindi/Hinglish recognition, physical microphone quality and authenticated browser end-to-end behavior still require validation. Private image storage remains unrelated and deferred.
+
+### Teacher voice selection
+
+The bottom-right whiteboard control opens a searchable Sarvam Bulbul v4 Flash
+voice picker. Its checked-in catalog is sourced from Sarvam's published voices
+guide and contains 222 speaker IDs, including language/style variants.
+The choice is stored per drawing in teacher context through the owned
+`update-teacher-context` action, and applies to the next response. An unset
+choice uses the server-configured speaker. Typed questions remain accessible
+through the picker. No provider credentials are exposed.
+
+The supplied playground list additionally names Kangkana and Mouchumi, whose
+speaker IDs were not present in the published catalog checked during this work.
+They are not selectable until their actual provider IDs are verified; names
+alone must not be guessed into API identifiers. The catalog is not a live
+availability guarantee, and each voice has not been individually synthesized.
+
+The picker uses selectable voice cards, full language labels, a language filter,
+and a Favorites view. Favorites also belong to the current drawing and use the
+same revision-protected context action (`favoriteVoices`).
+
+Each Sample button plays a short fixed phrase using the chosen speaker through
+`POST /api/teacher-voice-preview`. This binary MP3 route requires authentication,
+same-origin requests, a supported speaker, and drawing ownership. It resolves
+existing scoped Sarvam credentials, limits each process to one pending preview
+per user, and has a 25-second cutoff. It stores no sample audio in SQL. Samples
+use Hindi for Hindi/Hinglish personas and English otherwise. This is synthesis,
+not Sarvam's prerecorded demo library. Play/Stop and dialog cleanup abort pending
+requests and release browser audio/object URLs; samples do not change selection.
+
+### Conversational clarification
+
+Teacher requests use the owned lesson's latest 50 stored turns rather than an
+additional eight-turn cutoff. Interrupted/cancelled replies are marked unfinished;
+current and running turns are excluded. This is bounded recent context, not
+unlimited cross-lesson memory. Learning preferences persist independently and
+board-enabled turns capture current board context.
+
+Clarifications keep English board text but generate separate natural narration
+in the accepted spoken language before the normal draw-and-speak step. Short
+answers and requests to explain a term are interpreted against conversation
+history. The microphone remains push-to-talk/toggle controlled; it is not
+silently left recording. Browser autoplay and provider errors remain possible.
+
+Ordinary window blur, hidden-tab transitions and app-dialog opening no longer
+cancel a submitted teacher turn or finalizing transcription. They still stop
+active microphone capture safely. Explicit Stop/Escape/new recording and leaving
+the classroom retain cancellation behavior. Progress has a red moving border
+(static with reduced motion). This does not guarantee execution after page close,
+reload, browser/OS suspension or a broken streaming connection.
+
+### Teacher pacing and step delivery
+
+The teacher uses short connected explanations in everyday Hindi/Hinglish, with
+respectful आप/हैं/बताइए, and natural English when requested. Board writing stays
+English. These are prompt instructions, not a model fine-tuning job. The default
+Sarvam pace is 1.25; an explicit server environment value overrides it.
+
+For accepted board steps, current speech synthesis overlaps authorized operation
+publication. One next narration is prepared while the current step is rendered,
+spoken and saved; the provider socket still handles one synthesis request at a
+time. Audio begins after the browser renders the step, concurrently with saving.
+Acknowledgement still waits for playback, successful saving and scene verification.
+Cancellation rejects stale output and clears buffered audio. No partial or
+unvalidated model step is sent to the board early.
+
+Board lessons now stream complete validated lines rather than waiting for a
+full lesson array. Each formula or short explanation has matching narration;
+the following line waits for playback and saved-scene acknowledgement. A
+continuation uses an empty heading and tighter spacing instead of inserting
+blank title elements. This removes the full-response generation barrier, but
+provider first-line latency remains variable.
+
+The transcript panel has a top-right Collapse/Expand button with a 44px target
+and an announced expanded state. Collapsing keeps the transcript in memory and
+leaves recording, submission and teaching unchanged. The compact strip fits
+narrow viewports; starting a new recording expands it again. Errors and
+truncation warnings remain visible rather than being hidden with the text.
+
+Each new classroom visit/reload attempts a short context-aware greeting through
+the model and Sarvam. Duplicate effects share the visit identity; active lessons
+retain exclusive ownership. Saved class/subject are not asked again. Autoplay
+blocking still requires the visible playback control.
+
+The attached teacher stream has a 270-second cutoff and a 280-second running
+lease, within the configured 300-second Vercel function limit. This avoids the
+previous 110-second application cutoff for longer lessons; it does not guarantee
+that network connections, browser background execution or all providers last
+that long. Provider and database latency remain variable.

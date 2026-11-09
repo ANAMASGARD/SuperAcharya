@@ -247,7 +247,7 @@ export async function attachTeacherTurn(
       .update(teacherTurns)
       .set({
         status: teacherLifecycle.transition("admitted", "attach"),
-        expiresAt: Date.now() + 120_000,
+        expiresAt: Date.now() + 280_000,
       })
       .where(
         and(eq(teacherTurns.id, turnId), eq(teacherTurns.status, "admitted")),

@@ -6,10 +6,9 @@ import { CoreAgentKitRoot } from "@agent-native/toolkit/app/chat/agentkit-chat/i
 import { teacherContextSchema } from "@shared/teacher";
 import {
   TEACHER_WELCOME_PROMPT,
-  TEACHER_WELCOME_TEXT,
   welcomeRequestId,
 } from "@shared/teacher-welcome";
-import { MessageCircle, Square, X, Volume2 } from "lucide-react";
+import { Mic2, Square, X, Volume2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -22,6 +21,7 @@ import { createTeacherTransport } from "@/lib/teacher/runtime";
 
 import "./teacher.css";
 import VoicePreview from "./VoicePreview";
+import TeacherVoicePicker from "./TeacherVoicePicker";
 
 // This BYO runtime validates its own scoped providers in the authenticated stream.
 // Native Chat's provider/engine readiness is a different execution path.
@@ -106,10 +106,12 @@ function TeacherControls({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [voicesOpen, setVoicesOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [preferences, setPreferences] = useState(false);
   const [welcome, setWelcome] = useState(false);
   const greetingStarted = useRef(false);
+  const [visitId] = useState(() => nanoid());
   const control = useAgentKitControl();
   const controlRef = useRef(control);
   controlRef.current = control;
@@ -182,9 +184,6 @@ function TeacherControls({
     [setNotice],
   );
   useEffect(() => {
-    if (suspended) interrupt();
-  }, [suspended, interrupt]);
-  useEffect(() => {
     if (suspended || greetingStarted.current) return;
     let cancelled = false;
     void (async () => {
@@ -197,10 +196,10 @@ function TeacherControls({
         cancelled ||
         greetingStarted.current ||
         submitting.current ||
-        lesson?.turns.length
+        lesson?.turns.some(turn => turn.status === "running" || turn.status === "admitted")
       )
         return;
-      const requestId = await welcomeRequestId(boardId);
+      const requestId = await welcomeRequestId(boardId, visitId);
       if (cancelled || submitting.current) return;
       greetingStarted.current = true;
       setWelcome(true);
@@ -212,6 +211,7 @@ function TeacherControls({
       handle.current = run;
       await run.completed;
       if (handle.current === run) handle.current = null;
+      setWelcome(false);
     })().catch(() => {
       if (!cancelled)
         setNotice(
@@ -221,7 +221,7 @@ function TeacherControls({
     return () => {
       cancelled = true;
     };
-  }, [boardId, suspended, setNotice]);
+  }, [boardId, visitId, suspended, setNotice]);
 
   return (
     <>
@@ -232,9 +232,10 @@ function TeacherControls({
         onInterrupt={interrupt}
         teacherBusy={busy}
       />
-      {!suspended && (welcome || busy || notice || audioBlocked) && (
-        <aside className="board-teacher-feedback" aria-label="Teacher status">
-          {welcome && <p>{TEACHER_WELCOME_TEXT}</p>}
+      {(welcome || busy || notice || audioBlocked) && (
+        <aside className="board-teacher-feedback" aria-label="Teacher status" aria-busy={busy}>
+          {busy && <svg className="board-teacher-loading-border" aria-hidden="true"><rect x="2" y="2" rx="12" pathLength="100" /></svg>}
+          {welcome && <p>Acharya is welcoming you…</p>}
           <p role="status">
             {notice ||
               (busy
@@ -263,11 +264,13 @@ function TeacherControls({
       <Button
         className="board-teacher-open"
         hidden={suspended || open}
-        aria-label="Ask Acharya a question"
-        onClick={() => setOpen(true)}
+        aria-label="Choose teacher voice"
+        title="Choose teacher voice"
+        onClick={() => setVoicesOpen(true)}
       >
-        <MessageCircle aria-hidden="true" />
+        <Mic2 aria-hidden="true" />
       </Button>
+      <TeacherVoicePicker boardId={boardId} open={voicesOpen && !suspended} onOpenChange={setVoicesOpen} onAsk={() => { setVoicesOpen(false); setOpen(true); }} />
       <section
         className="board-teacher-panel"
         aria-label={t("teacher.title")}

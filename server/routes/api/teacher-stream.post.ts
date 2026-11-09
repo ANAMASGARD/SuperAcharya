@@ -120,7 +120,7 @@ export default defineEventHandler(async (event) => {
       }, 1000);
       const timeout = setTimeout(
         () => controller.abort(new Error("Teacher turn timed out.")),
-        110_000,
+        270_000,
       );
       const identity = { turnId: turn.id, generation: turn.generation };
       const message = (text: string, status: "streaming" | "complete") => ({

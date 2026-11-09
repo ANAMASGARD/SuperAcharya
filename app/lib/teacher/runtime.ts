@@ -19,6 +19,7 @@ import { nanoid } from "nanoid";
 import { TAB_ID } from "@/lib/tab-id";
 
 import { TeacherAudio } from "./audio";
+import { renderAndNarrateStep } from "./step-playback";
 import type { BrowserTeachingTools } from "./board";
 
 export function needsLearningContext(text: string) {
@@ -65,15 +66,8 @@ export function createTeacherTransport(
         operation.generation !== turn.generation
       )
         throw new Error("Teaching step is no longer available.");
-      let savedRevision = await tools.apply(operation, isActive);
+      const savedRevision = await renderAndNarrateStep(tools, audio, operation, encodedAudio, isActive);
       if (!isActive()) return;
-      if (
-        encodedAudio &&
-        !(await audio.playStep(turn.generation, encodedAudio))
-      )
-        throw new Error("Teacher playback stopped. Written work is preserved.");
-      if (!isActive()) return;
-      savedRevision = await tools.apply(operation, isActive);
       await callAction("ack-teaching-step", {
         boardId,
         turnId: turn.id,
@@ -85,6 +79,7 @@ export function createTeacherTransport(
       });
     } catch (error) {
       if (!isActive()) return;
+      audio.stop();
       stepFailure = error instanceof Error ? error.message : "Could not apply the teaching step.";
       notice(stepFailure);
       await callAction("ack-teaching-step", {
@@ -142,7 +137,7 @@ export function createTeacherTransport(
             requestId,
             tabId: TAB_ID,
             text,
-            extractContext: needsLearningContext(text),
+            extractContext: turn.metadata?.teacherWelcome !== true && needsLearningContext(text),
             ...(metadata ? { boardCapture: metadata } : {}),
           }),
         );

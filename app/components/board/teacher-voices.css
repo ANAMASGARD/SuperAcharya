@@ -1,0 +1,63 @@
+.teacher-voice-dialog {
+  --background: 0 0% 100%;
+  --foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 35%;
+  --input: 0 0% 100%;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  width: calc(100vw - 32px);
+  max-width: 640px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  border: 3px solid black;
+  border-radius: 20px;
+  box-shadow: 7px 7px 0 black;
+  padding: 24px;
+  gap: 16px;
+}
+.voice-picker { display: grid; gap: 16px; min-width: 0; }
+.voice-current { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 2px solid black; border-radius: 12px; background: hsl(var(--primary) / .22); font-size: 12px; }
+.voice-current > svg { flex-shrink: 0; width: 24px; }
+.voice-current strong { display: block; font-size: 14px; margin-top: 3px; }
+.voice-filters { display: flex; gap: 10px; }
+.voice-search { position: relative; flex: 1; min-width: 0; }
+.voice-search > svg { position: absolute; left: 12px; top: 14px; width: 18px; height: 18px; }
+.voice-search input { height: 46px; padding-left: 38px; border-color: black; box-shadow: none; border-radius: 10px; }
+.voice-filters select { min-width: 0; max-width: 45%; border: 2px solid black; border-radius: 10px; padding: 8px; background: white; color: black; font-size: 14px; }
+.voice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-height: 300px; overflow-y: auto; padding: 4px 8px 8px 2px; margin: 0; min-width: 0; border: 0; }
+.voice-card { position: relative; display: flex; align-items: center; gap: 10px; border: 2px solid black; border-radius: 12px; padding: 12px; box-shadow: 3px 3px 0 black; cursor: pointer; background: white; transition: transform 120ms, box-shadow 120ms; }
+.voice-card[data-selected="true"] { background: hsl(var(--primary)); }
+.voice-card input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.voice-card:has(input:focus-visible) { outline: 3px solid black; outline-offset: 3px; }
+.voice-avatar { width: 36px; height: 36px; display: grid; place-items: center; border: 2px solid black; border-radius: 50%; font-weight: 700; background: white; flex-shrink: 0; }
+.voice-details { display: grid; min-width: 0; gap: 2px; }
+.voice-details strong { font-size: 16px; }
+.voice-details span, .voice-details small { font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }
+.voice-details small { color: #454545; }
+.voice-check { margin-left: auto; flex-shrink: 0; width: 18px; height: 18px; border: 1.5px solid black; border-radius: 50%; display: grid; place-items: center; background: white; }
+.voice-save-row { display: flex; justify-content: space-between; gap: 12px; align-items: center; border-top: 2px solid black; padding-top: 16px; }
+.voice-save-row > span { font-size: 12px; color: hsl(var(--muted-foreground)); }
+.voice-save-row button { min-height: 44px; color: black; }
+.voice-question-link { font-size: 13px; min-height: 44px; color: black; }
+.voice-feedback { font-size: 13px; margin: 0; }
+.voice-empty { grid-column: 1 / -1; padding: 24px 8px; text-align: center; }
+.voice-options:disabled { opacity: .6; }
+@media (hover: hover) and (pointer: fine) {
+  .voice-card:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 black; background: hsl(var(--primary) / .35); }
+  .voice-card[data-selected="true"]:hover { background: hsl(var(--primary)); }
+}
+@media (max-width: 480px) {
+  .teacher-voice-dialog { padding: 18px; }
+  .voice-options { grid-template-columns: 1fr; max-height: 35dvh; }
+  .voice-filters { flex-direction: column; }
+  .voice-filters select { max-width: none; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .teacher-voice-dialog *, .teacher-voice-dialog *:hover { transition: none; transform: none; }
+}
+.voice-tabs { display: flex; gap: 12px; }
+.voice-tabs button { min-height: 44px; color: black; }
+.voice-card { display: block; padding: 0; }
+.voice-card-choice { display: flex; align-items: center; gap: 10px; padding: 12px; cursor: pointer; }
+.voice-card-actions { display: flex; justify-content: space-between; border-top: 1px solid black; margin: 0 12px; }
+.voice-card-actions button { min-height: 44px; min-width: 44px; font-size: 12px; color: black; }

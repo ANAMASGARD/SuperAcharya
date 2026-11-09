@@ -330,11 +330,12 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
         throw new Error("Wait for the drawing to load.");
       return captureQuestion(api.current, hydratedRevision.current);
     },
-    apply: async (operation, isActive) => {
+    apply: async (operation, isActive, onRendered) => {
       await flush();
       if (!isActive() || !api.current || !boardQueue.current)
         throw new Error("Teacher turn stopped.");
       await applyTeachingStep(api.current, operation, isActive);
+      if (isActive()) onRendered?.();
       onChange(
         api.current.getSceneElementsIncludingDeleted(),
         api.current.getAppState(),

@@ -150,3 +150,27 @@
     bottom: max(130px, calc(env(safe-area-inset-bottom) + 120px));
   }
 }
+
+.whiteboard-editor .board-teacher-loading-border {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  overflow: visible;
+  fill: none;
+  filter: drop-shadow(0 0 3px var(--board-red, #e53935));
+}
+.whiteboard-editor .board-teacher-loading-border rect {
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  stroke: var(--board-red, #e53935);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-dasharray: 18 82;
+  animation: board-teacher-progress 1400ms linear infinite;
+}
+@keyframes board-teacher-progress { to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) {
+  .whiteboard-editor .board-teacher-loading-border rect { animation: none; stroke-dasharray: none; }
+}

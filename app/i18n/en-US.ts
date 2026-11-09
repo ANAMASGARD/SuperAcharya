@@ -50,6 +50,8 @@ const messages = {
     start: "Start speaking",
     close: "Close speech",
     transcript: "Speech transcript",
+    collapseTranscript: "Collapse transcript",
+    expandTranscript: "Expand transcript",
     empty: "No speech detected. Try speaking closer to the microphone.",
     truncated: "This transcript was cut short. Try a shorter clip.",
     ready: "Transcript ready.",

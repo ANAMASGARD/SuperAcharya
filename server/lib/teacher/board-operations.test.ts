@@ -10,6 +10,7 @@ import {
 import { nanoid } from "nanoid";
 import { beforeAll, afterAll, expect, it } from "vitest";
 
+import { teachingStepTexts } from "../../../shared/teacher-board";
 import { boardMigrations } from "../../db/migrations";
 import { createBoard, getBoard, saveBoard } from "../whiteboards";
 import {
@@ -71,92 +72,98 @@ async function setup() {
     },
   };
 }
-it("uses authenticated agent actions, rejects another owner, and does not confuse queued with applied", async () => {
-  const { input, turn, board } = await setup();
-  const invoke = (email: string) =>
-    runWithRequestContext({ userEmail: email, orgScope: "personal" }, () =>
-      executeAgentToolCall({
-        actions: teacherTools,
-        name: "enqueue-teaching-step",
-        input,
-        ownerEmail: email,
-        caller: "tool",
-        callId: nanoid(),
-        requireWriteApproval: false,
+it.each([step, { heading: "", lines: ["x = 1"], narration: "Simplify." }])(
+  "uses authenticated agent actions, rejects another owner, and does not confuse queued with applied",
+  async (lessonStep) => {
+    const { input, turn, board } = await setup();
+    input.step = lessonStep;
+    const invoke = (email: string) =>
+      runWithRequestContext({ userEmail: email, orgScope: "personal" }, () =>
+        executeAgentToolCall({
+          actions: teacherTools,
+          name: "enqueue-teaching-step",
+          input,
+          ownerEmail: email,
+          caller: "tool",
+          callId: nanoid(),
+          requireWriteApproval: false,
+        }),
+      );
+    expect((await invoke("other@example.test")).status).toBe("failed");
+    expect((await invoke(owner)).status).toBe("completed");
+    const op = await enqueueTeachingStep(owner, input);
+    expect(op.status).toBe("queued");
+    expect(await enqueueTeachingStep(owner, input)).toEqual(op);
+    await expect(
+      enqueueTeachingStep(owner, {
+        ...input,
+        step: { ...step, heading: "Changed" },
       }),
+    ).rejects.toMatchObject({ errorCode: "step_conflict" });
+    await expect(
+      enqueueTeachingStep(owner, { ...input, sequence: 1 }),
+    ).rejects.toMatchObject({ errorCode: "step_order" });
+    const ack = {
+      boardId: board.id,
+      turnId: turn.id,
+      generation: turn.generation,
+      operationId: op.id,
+      tabId: "tab-a",
+      result: "applied" as const,
+      savedRevision: board.revision,
+    };
+    await expect(acknowledgeTeachingStep(owner, ack)).rejects.toMatchObject({
+      errorCode: "step_not_saved",
+    });
+    await expect(
+      acknowledgeTeachingStep(owner, { ...ack, tabId: "tab-b" }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    const saved = await saveBoard(owner, {
+      id: board.id,
+      title: board.title,
+      expectedRevision: board.revision,
+      scene: {
+        ...board.scene,
+        elements: teachingStepTexts(lessonStep).map((text, index) => ({
+          id: op.elementIds[index]!,
+          type: "text",
+          x: 0,
+          y: index * 40,
+          width: 200,
+          height: 30,
+          version: 1,
+          versionNonce: 1,
+          isDeleted: false,
+          text,
+          originalText: text,
+        })),
+      },
+    });
+    const waiting = waitForTeachingStep(
+      owner,
+      op.id,
+      new AbortController().signal,
     );
-  expect((await invoke("other@example.test")).status).toBe("failed");
-  expect((await invoke(owner)).status).toBe("completed");
-  const op = await enqueueTeachingStep(owner, input);
-  expect(op.status).toBe("queued");
-  expect(await enqueueTeachingStep(owner, input)).toEqual(op);
-  await expect(
-    enqueueTeachingStep(owner, {
-      ...input,
-      step: { ...step, heading: "Changed" },
-    }),
-  ).rejects.toMatchObject({ errorCode: "step_conflict" });
-  await expect(
-    enqueueTeachingStep(owner, { ...input, sequence: 1 }),
-  ).rejects.toMatchObject({ errorCode: "step_order" });
-  const ack = {
-    boardId: board.id,
-    turnId: turn.id,
-    generation: turn.generation,
-    operationId: op.id,
-    tabId: "tab-a",
-    result: "applied" as const,
-    savedRevision: board.revision,
-  };
-  await expect(acknowledgeTeachingStep(owner, ack)).rejects.toMatchObject({
-    errorCode: "step_not_saved",
-  });
-  await expect(
-    acknowledgeTeachingStep(owner, { ...ack, tabId: "tab-b" }),
-  ).rejects.toMatchObject({ statusCode: 404 });
-  const saved = await saveBoard(owner, {
-    id: board.id,
-    title: board.title,
-    expectedRevision: board.revision,
-    scene: {
-      ...board.scene,
-      elements: [step.heading, ...step.lines].map((text, index) => ({
-        id: op.elementIds[index]!,
-        type: "text",
-        x: 0,
-        y: index * 40,
-        width: 200,
-        height: 30,
-        version: 1,
-        versionNonce: 1,
-        isDeleted: false,
-        text,
-        originalText: text,
-      })),
-    },
-  });
-  const waiting = waitForTeachingStep(
-    owner,
-    op.id,
-    new AbortController().signal,
-  );
-  expect(
-    (
-      await acknowledgeTeachingStep(owner, {
-        ...ack,
-        savedRevision: saved.revision,
-      })
-    ).status,
-  ).toBe("applied");
-  await waiting;
-  expect((await getBoard(owner, board.id)).scene.elements).toHaveLength(3);
-  expect((await listTeachingSteps(owner, board.id, turn.id))[0]?.status).toBe(
-    "applied",
-  );
-  expect(
-    (await enqueueTeachingStep(owner, { ...input, sequence: 1 })).status,
-  ).toBe("queued");
-});
+    expect(
+      (
+        await acknowledgeTeachingStep(owner, {
+          ...ack,
+          savedRevision: saved.revision,
+        })
+      ).status,
+    ).toBe("applied");
+    await waiting;
+    expect((await getBoard(owner, board.id)).scene.elements).toHaveLength(
+      teachingStepTexts(lessonStep).length,
+    );
+    expect((await listTeachingSteps(owner, board.id, turn.id))[0]?.status).toBe(
+      "applied",
+    );
+    expect(
+      (await enqueueTeachingStep(owner, { ...input, sequence: 1 })).status,
+    ).toBe("queued");
+  },
+);
 it("cancels pending commands and rejects stale acknowledgements while preserving completed work", async () => {
   const { input, turn, board } = await setup();
   const op = await enqueueTeachingStep(owner, input);
