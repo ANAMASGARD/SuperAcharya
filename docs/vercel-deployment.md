@@ -1,6 +1,6 @@
 # Vercel handoff — Super Acharya
 
-The checkout is linked to `anamasgards-projects/super-acharya`. `.vercel/` is ignored. No further deployment is automatic; the user owns the next deploy. No Git commit or push was performed for this change.
+The checkout is linked to `anamasgards-projects/super-acharya`. `.vercel/` is ignored. Source commit `72ab78e` was committed and pushed, then deployed to production after the user explicitly requested deployment. Future uploads and promotions still require user authorization.
 
 ## Already prepared
 
@@ -49,3 +49,17 @@ After uploading, inspect actual runtime logs, not just build status. Verify sign
 No lint script/configuration exists. Do not describe build/typecheck as lint checks.
 
 Sources: [Vercel function limits](https://vercel.com/docs/functions/limitations), [WebSockets](https://vercel.com/docs/functions/websockets), and the installed Agent-Native `vercel` deployment guide.
+
+
+## Verified production release
+
+Production URL: https://super-acharya.vercel.app/
+
+- Deployment: `dpl_6mycko6Ejink1VNqZnDxzEwaAiXU`, built locally from source commit `72ab78e` with the Nitro Vercel preset, uploaded using `--prod --skip-domain`, checked, then promoted onto the public domain.
+- Project settings now explicitly select Node 24.x, pnpm frozen-lockfile installation and the Nitro Vercel build command. No paid plan or extra service was enabled.
+- Root, whiteboard shell, auth session endpoint, manifest and worker returned 200; unauthenticated teacher POST returned 401. Manifest/worker MIME and revalidation headers were correct. All 185 SSR asset references checked existed in the paired client artifact.
+- A synthetic test account signed in on the public site and opened an owned drawing. Real teacher text completed. An authenticated WebSocket reached Gnani and returned its ready event; no physical microphone audio was used in that probe.
+- A live mathematics turn wrote three editable elements for x + 1 = 2. Neon readback confirmed saved elements, completed turns and an applied teaching operation. Local Stop was exercised and a subsequent real turn completed. Saved drawing reload was checked in the browser.
+- The older deployments' package-resolution failure is superseded by this release. The server still emits a pg SSL-mode compatibility warning; that warning is not a function invocation failure. A raw unauthenticated WebSocket probe opened an idle transport without an authorized ready/transcript event; it was terminated and is not counted as a 401 handshake test.
+
+Physical microphone recognition, physical-device install/offline/update behavior, two-tab live speech, external OAuth callbacks and private image storage remain separate verification/configuration boundaries. The Hobby duration limit above still applies.

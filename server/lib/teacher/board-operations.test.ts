@@ -195,3 +195,67 @@ it("observes an acknowledgement persisted by another executor without a local no
   });
   await expect(promise).resolves.toBeUndefined();
 });
+
+it("saves source-backed typeset mathematics without private image storage and verifies its source on acknowledgement", async () => {
+  const { input, turn, board } = await setup();
+  const latex = String.raw`\sin\theta=\frac{1}{2}`;
+  const mathStep = {
+    heading: "Equation",
+    lines: [`$$${latex}$$`],
+    narration: "Sine theta equals one half.",
+  };
+  const op = await enqueueTeachingStep(owner, { ...input, step: mathStep });
+  const saved = await saveBoard(owner, {
+    id: board.id,
+    title: board.title,
+    expectedRevision: board.revision,
+    scene: {
+      ...board.scene,
+      elements: [
+        {
+          id: op.elementIds[0]!,
+          type: "text",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 30,
+          version: 1,
+          versionNonce: 1,
+          isDeleted: false,
+          text: "Equation",
+          originalText: "Equation",
+        },
+        {
+          id: op.elementIds[1]!,
+          type: "image",
+          x: 0,
+          y: 50,
+          width: 200,
+          height: 70,
+          version: 1,
+          versionNonce: 1,
+          isDeleted: false,
+          fileId: `math_${op.elementIds[1]}`,
+          customData: { equation: { version: 1, latex } },
+        },
+      ],
+    },
+  });
+  expect(saved.assets).toEqual([]);
+  expect(
+    (
+      await acknowledgeTeachingStep(owner, {
+        boardId: board.id,
+        turnId: turn.id,
+        generation: turn.generation,
+        operationId: op.id,
+        tabId: "tab-a",
+        result: "applied",
+        savedRevision: saved.revision,
+      })
+    ).status,
+  ).toBe("applied");
+  expect(
+    (await getBoard(owner, board.id)).scene.elements[1]?.customData,
+  ).toEqual({ equation: { version: 1, latex } });
+});

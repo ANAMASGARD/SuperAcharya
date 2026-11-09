@@ -258,9 +258,10 @@ export default function VoicePreview({
                 className="board-voice-action board-voice-send"
                 aria-label={label("send")}
                 aria-describedby="speech-send-unavailable"
-                disabled={!onFinalized || !finalized || teacherBusy}
+                disabled={!onFinalized || busy || (phase !== "active" && (!finalized || teacherBusy))}
                 onClick={() => {
-                  if (finalized) onFinalized?.(finalized);
+                  if (phase === "active") void pause();
+                  else if (finalized) onFinalized?.(finalized);
                 }}
               >
                 <ArrowUp aria-hidden="true" />

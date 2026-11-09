@@ -121,3 +121,43 @@ describe("Clocked evidence boundary", () => {
     ).toBe(false);
   });
 });
+
+it("writes clarification on the board and waits for acknowledgement instead of ending in chat", async () => {
+  const drawStep = vi.fn(async () => {});
+  const teach = vi.fn(async () => []);
+  const graph = buildTeachingGraph(new MemorySaver(), {
+    assertActive: async () => {},
+    orchestrate: async () => ({ context: {}, clarification: "" }),
+    understand: async (input) => ({
+      input,
+      clarification: "Which angle interval should we use?",
+    }),
+    teach,
+    tutor: async function* () {
+      throw new Error("Unexpected text-only response");
+    },
+    emitText: vi.fn(),
+    drawStep,
+  });
+  const result = await graph.invoke(
+    { input: "Solve this" },
+    { configurable: { thread_id: "board-clarification" } },
+  );
+  expect(teach).not.toHaveBeenCalled();
+  expect(drawStep).toHaveBeenCalledWith(
+    {
+      heading: "Before we continue",
+      lines: ["Which angle interval should we use?"],
+      narration: "Which angle interval should we use?",
+    },
+    0,
+  );
+  expect(result.response).toBe("Which angle interval should we use?");
+});
+
+
+it("preserves evidenced class and subject when an introduction has no supported teaching mode", () => {
+  const text = "Class twelve maths ask which topic";
+  const field = (value: string) => ({value, start:text.indexOf(value), end:text.indexOf(value)+value.length, confidence:0.99});
+  expect(normalizeClocked(text,{fields:{learnerLevel:field("twelve"),subject:field("maths"),teachingMode:field("ask which topic")}})).toEqual({status:"accepted",patch:{learnerLevel:"twelve",subject:"maths"}});
+});

@@ -9,6 +9,7 @@ import {
   enqueueTeachingStepSchema,
   teachingOperationSchema,
 } from "../../../shared/teacher-board";
+import { matchesTeachingLine } from "../../../shared/teacher-math";
 import { getDb } from "../../db";
 import {
   teacherLessons,
@@ -252,8 +253,7 @@ export async function acknowledgeTeachingStep(
             (element) =>
               element.id === id &&
               !element.isDeleted &&
-              element.type === "text" &&
-              element.originalText === texts[index],
+              matchesTeachingLine(element, texts[index]!),
           ),
         )
       )

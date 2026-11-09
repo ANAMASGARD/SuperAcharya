@@ -3,6 +3,7 @@ import type { z } from "zod";
 
 import type { teacherStreamEventSchema } from "../../../shared/teacher";
 import type { CapturedQuestion } from "../../../shared/teacher-board";
+import { TEACHER_WELCOME_PROMPT } from "../../../shared/teacher-welcome";
 import { listTeachingSteps, waitForTeachingStep } from "./board-operations";
 import { teacherCheckpointer } from "./checkpoints";
 import { teacherCredential, teacherSettings } from "./config";
@@ -50,6 +51,13 @@ export async function executeTeachingTurn(
     );
   const session = await getTeacherSession(owner, turn.boardId);
   if (!session) throw new Error("Teacher conversation not found.");
+  const history: ModelMessage[] = session.turns
+    .filter((t) => t.status === "completed" && t.id !== turn.id)
+    .slice(-8)
+    .flatMap((t): ModelMessage[] => [
+      { role: "user", content: t.input },
+      { role: "assistant", content: t.response },
+    ]);
   const identity = { turnId: turn.id, generation: turn.generation };
   const notice = (message: string) =>
     emit({ type: "teacher-notice", ...identity, message });
@@ -91,6 +99,24 @@ export async function executeTeachingTurn(
     assertActive,
     orchestrate: async () => {
       let context = session.context;
+      const voiceKey = await teacherCredential("SARVAM_API_KEY");
+      const startNarrator = () => {
+        if (voiceKey)
+          narrator = new SarvamNarrator(
+            voiceKey,
+            settings.speaker,
+            turn.input === TEACHER_WELCOME_PROMPT ||
+              context.responseLanguage !== "en"
+              ? "hi-IN"
+              : "en-IN",
+            signal,
+            settings.pace,
+          );
+        else
+          notice(
+            "Teacher voice is not configured. The written reply is available.",
+          );
+      };
       if (turn.extractContext) {
         const clockedKey = await teacherCredential("CLOCKED_API_KEY");
         const extraction = clockedKey
@@ -118,17 +144,20 @@ export async function executeTeachingTurn(
             },
             signal,
           );
-          if (applied.status !== "completed")
+          if (applied.status !== "completed") {
+            startNarrator();
             return {
               context,
               clarification:
                 "Your learning preferences need confirmation. Please edit Learning preferences and send your question again.",
             };
+          }
           // Read the authorized write back; do not trust an opaque tool-output string.
           context =
             (await getTeacherSession(owner, turn.boardId))?.context ?? context;
           notice("Learning preferences updated from your explicit request.");
         } else if (extraction.status !== "unchanged") {
+          startNarrator();
           return {
             context,
             clarification:
@@ -136,22 +165,7 @@ export async function executeTeachingTurn(
           };
         }
       }
-      const voiceKey = await teacherCredential("SARVAM_API_KEY");
-      if (voiceKey)
-        narrator = new SarvamNarrator(
-          voiceKey,
-          settings.speaker,
-          context.responseLanguage === "hi" ||
-            context.responseLanguage === "hinglish"
-            ? "hi-IN"
-            : "en-IN",
-          signal,
-          settings.pace,
-        );
-      else
-        notice(
-          "Teacher voice is not configured. The written reply is available.",
-        );
+      startNarrator();
       return { context, clarification: "" };
     },
     ...(capture
@@ -163,6 +177,7 @@ export async function executeTeachingTurn(
                   model: settings.model,
                   capture,
                   question: input,
+                  history,
                   signal,
                 })
               : Promise.resolve({ input, clarification: "" }),
@@ -172,6 +187,7 @@ export async function executeTeachingTurn(
               model: settings.model,
               input,
               context,
+              history,
               signal,
             }),
           drawStep: async (
@@ -226,13 +242,6 @@ export async function executeTeachingTurn(
         }
       : {}),
     tutor: (input, context) => {
-      const history: ModelMessage[] = session.turns
-        .filter((t) => t.status === "completed" && t.id !== turn.id)
-        .slice(-8)
-        .flatMap((t): ModelMessage[] => [
-          { role: "user", content: t.input },
-          { role: "assistant", content: t.response },
-        ]);
       return openAITutor({
         key,
         model: settings.model,

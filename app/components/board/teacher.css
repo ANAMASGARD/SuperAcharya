@@ -115,3 +115,38 @@
   height: 18px;
   accent-color: #000;
 }
+
+/* Questions are a compact composer; the canvas owns every teaching response. */
+.whiteboard-editor .board-teacher-panel {
+  right: 50%;
+  transform: translateX(50%);
+  bottom: max(88px, calc(env(safe-area-inset-bottom) + 76px));
+  width: min(440px, calc(100% - 24px));
+}
+.whiteboard-editor .board-teacher-feedback {
+  position: absolute;
+  z-index: 16;
+  bottom: max(82px, calc(env(safe-area-inset-bottom) + 76px));
+  left: 12px;
+  max-width: min(350px, calc(100% - 24px));
+  padding: 12px;
+  background: #fff;
+  color: #111;
+  border: 2px solid #000;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 #000;
+  font-size: 14px;
+}
+.whiteboard-editor .board-teacher-feedback p {
+  margin: 0 0 8px;
+}
+.whiteboard-editor .board-teacher-feedback button {
+  min-height: 44px;
+  color: #111;
+}
+@media (max-width: 600px) {
+  .whiteboard-editor .board-teacher-panel,
+  .whiteboard-editor .board-teacher-feedback {
+    bottom: max(130px, calc(env(safe-area-inset-bottom) + 120px));
+  }
+}

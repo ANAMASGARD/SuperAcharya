@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { generatedEquation } from "./teacher-math";
+
 export const boardIdSchema = z.string().regex(/^[A-Za-z0-9_-]{21}$/);
 export const fileIdSchema = z
   .string()
@@ -161,7 +163,7 @@ export function sceneFileIds(scene: BoardScene): string[] {
   return [
     ...new Set(
       scene.elements
-        .filter((e) => e.type === "image" && e.fileId)
+        .filter((e) => e.type === "image" && e.fileId && !generatedEquation(e))
         .map((e) => e.fileId)
         .filter((id): id is string => typeof id === "string"),
     ),

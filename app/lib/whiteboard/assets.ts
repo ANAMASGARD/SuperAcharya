@@ -1,5 +1,8 @@
 import { appPath } from "@agent-native/core/client/api-path";
+import { generatedEquation } from "@shared/teacher-math";
 import { assetSchema, sceneFileIds, type Board } from "@shared/whiteboard";
+
+import { equationFile } from "@/lib/teacher/math";
 function assetPath(boardId: string, fileId: string) {
   return appPath(
     `/api/whiteboard-assets/${encodeURIComponent(boardId)}/${encodeURIComponent(fileId)}`,
@@ -46,6 +49,13 @@ export async function loadBoardFiles(board: Board, signal?: AbortSignal) {
         ];
       }),
   );
+  for (const element of board.scene.elements) {
+    const equation = generatedEquation(element);
+    if (!equation || element.isDeleted || !element.fileId) continue;
+    signal?.throwIfAborted();
+    const { file } = await equationFile(equation.latex, element.fileId);
+    entries.push([file.id, file]);
+  }
   return Object.fromEntries(entries);
 }
 async function rasterizeSvg(blob: Blob): Promise<Blob> {

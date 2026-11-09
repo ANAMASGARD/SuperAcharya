@@ -9,6 +9,13 @@ import type {
   CapturedQuestion,
   TeachingOperation,
 } from "@shared/teacher-board";
+import {
+  equationLatex,
+  matchesTeachingLine,
+  generatedEquation,
+} from "@shared/teacher-math";
+
+import { equationFile } from "./math";
 
 export interface BrowserTeachingTools {
   capture: () => Promise<CapturedQuestion>;
@@ -34,7 +41,11 @@ export async function captureQuestion(
     );
   const text = elements
     .flatMap((element) =>
-      element.type === "text" ? [element.originalText] : [],
+      element.type === "text"
+        ? [element.originalText]
+        : generatedEquation(element)
+          ? [`Equation: ${generatedEquation(element)!.latex}`]
+          : [],
     )
     .join("\n")
     .slice(0, 12000);
@@ -69,11 +80,37 @@ export async function captureQuestion(
   ).join("");
   return { ...payload, fingerprint };
 }
-/** Append editable handwritten-font text. No claim of animated pen strokes or LaTeX rendering. */
-export function applyTeachingStep(
+function wrapBoardText(text: string, fontSize: number, width: number) {
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return text;
+  context.font = `${fontSize}px Excalifont`;
+  return text
+    .split("\n")
+    .map((paragraph) => {
+      const lines: string[] = [];
+      let line = "";
+      for (const word of paragraph.split(/\s+/)) {
+        const next = line ? `${line} ${word}` : word;
+        if (line && context.measureText(next).width > width) {
+          lines.push(line);
+          line = word;
+        } else line = next;
+      }
+      lines.push(line);
+      return lines.join("\n");
+    })
+    .join("\n");
+}
+/** Append editable prose and source-backed typeset equations without erasing student work. */
+export async function applyTeachingStep(
   editor: ExcalidrawImperativeAPI,
   operation: TeachingOperation,
+  isActive: () => boolean,
 ) {
+  // Load the handwriting font before measuring newly generated equations.
+  await document.fonts.load('24px "Excalifont"');
+  await document.fonts.load('28px "Excalifont"');
+  if (!isActive()) throw new Error("Teacher turn stopped.");
   const current = editor.getSceneElementsIncludingDeleted();
   const existing = current.filter((element) =>
     operation.elementIds.includes(element.id),
@@ -87,8 +124,7 @@ export function applyTeachingStep(
           (element) =>
             element.id === id &&
             !element.isDeleted &&
-            element.type === "text" &&
-            element.originalText === lines[index],
+            matchesTeachingLine(element, lines[index]!),
         ),
       )
     )
@@ -100,9 +136,45 @@ export function applyTeachingStep(
   const visible = current.filter((element) => !element.isDeleted);
   const bounds = visible.length ? getCommonBounds(visible) : [40, 40, 40, 40];
   let y = visible.length ? bounds[3] + 64 : 40;
-  const elements = lines.flatMap((text, index) => {
+  const elements = [];
+  for (const [index, text] of lines.entries()) {
     const id = operation.elementIds[index];
     if (!id) throw new Error("Invalid teaching step element IDs.");
+    const latex = equationLatex(text);
+    if (latex) {
+      const { file, width, height } = await equationFile(latex, `math_${id}`);
+      if (!isActive()) throw new Error("Teacher turn stopped.");
+      const scale = Math.min(
+        1,
+        Math.max(240, editor.getAppState().width - 80) / width,
+      );
+      editor.addFiles([file]);
+      elements.push(
+        ...convertToExcalidrawElements(
+          [
+            {
+              type: "image",
+              id,
+              x: bounds[0],
+              y,
+              width: width * scale,
+              height: height * scale,
+              fileId: file.id,
+              status: "saved",
+              scale: [1, 1],
+              customData: {
+                equation: { version: 1, latex },
+                teacherTurnId: operation.turnId,
+                teachingStepId: operation.id,
+              },
+            },
+          ],
+          { regenerateIds: false },
+        ),
+      );
+      y += height * scale + 24;
+      continue;
+    }
     const element = convertToExcalidrawElements(
       [
         {
@@ -110,11 +182,15 @@ export function applyTeachingStep(
           id,
           x: bounds[0],
           y,
-          text,
+          text: wrapBoardText(
+            text,
+            index === 0 ? 28 : 24,
+            Math.min(600, Math.max(240, editor.getAppState().width - 80)),
+          ),
+          originalText: text,
           fontSize: index === 0 ? 28 : 24,
           fontFamily: 5,
           strokeColor: "#1e1e1e",
-          width: 650,
           customData: {
             teacherTurnId: operation.turnId,
             teacherGeneration: operation.generation,
@@ -126,10 +202,10 @@ export function applyTeachingStep(
       { regenerateIds: false },
     );
     y += (element[0]?.height ?? 40) + 20;
-    return element;
-  });
+    elements.push(...element);
+  }
   editor.updateScene({
-    elements: [...current, ...elements],
+    elements: [...editor.getSceneElementsIncludingDeleted(), ...elements],
     captureUpdate: CaptureUpdateAction.IMMEDIATELY,
   });
   editor.scrollToContent(elements, { fitToContent: true, animate: false });

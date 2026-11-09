@@ -24,7 +24,7 @@ const descriptions = {
   responseLanguage:
     "An explicit request to teach in English, Hindi or Hinglish, not merely the language used in this input.",
   teachingMode:
-    "An explicit request for a practice question or to answer the student's own question.",
+    "Only an explicit request for a practice exercise or to solve/answer a supplied question. Asking which topic to study, a class introduction, or saying I want to study is not a teaching mode; return null.",
 };
 export function normalizeClocked(
   source: string,
@@ -68,6 +68,8 @@ export function normalizeClocked(
         : /solve|answer|हल|सवाल/i.test(value)
           ? "student-question"
           : "";
+    // Unsupported mode wording must not discard independently evidenced class/subject.
+    if (!value && name === "teachingMode") continue;
     if (!value)
       return {
         status: "clarify",

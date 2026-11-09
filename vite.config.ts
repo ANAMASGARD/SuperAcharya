@@ -11,7 +11,16 @@ const agentNativePlugins = agentNative as unknown as (
 ) => any[];
 export default defineConfig({
   optimizeDeps: {
-    include: ["@excalidraw/excalidraw"],
+    include: [
+      "@excalidraw/excalidraw",
+      "mathjax-full/js/adaptors/lite/Element.js",
+      "mathjax-full/js/adaptors/liteAdaptor.js",
+      "mathjax-full/js/handlers/html.js",
+      "mathjax-full/js/input/tex.js",
+      "mathjax-full/js/mathjax.js",
+      "mathjax-full/js/input/tex/ams/AmsConfiguration.js",
+      "mathjax-full/js/output/svg.js",
+    ],
     entries: [
       "app/entry.client.tsx",
       "app/root.tsx",

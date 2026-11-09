@@ -334,7 +334,7 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
       await flush();
       if (!isActive() || !api.current || !boardQueue.current)
         throw new Error("Teacher turn stopped.");
-      applyTeachingStep(api.current, operation);
+      await applyTeachingStep(api.current, operation, isActive);
       onChange(
         api.current.getSceneElementsIncludingDeleted(),
         api.current.getAppState(),

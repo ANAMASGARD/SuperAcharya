@@ -1,10 +1,14 @@
 import type { AgentRunHandle } from "@agent-native/agentkit/client";
 import { callAction, useActionQuery } from "@agent-native/core/client/hooks";
 import { useT } from "@agent-native/core/client/i18n";
-import { AgentKitChat } from "@agent-native/toolkit/app/agentkit/react/components";
 import { useAgentKitControl } from "@agent-native/toolkit/app/agentkit/react/context";
 import { CoreAgentKitRoot } from "@agent-native/toolkit/app/chat/agentkit-chat/index";
 import { teacherContextSchema } from "@shared/teacher";
+import {
+  TEACHER_WELCOME_PROMPT,
+  TEACHER_WELCOME_TEXT,
+  welcomeRequestId,
+} from "@shared/teacher-welcome";
 import { MessageCircle, Square, X, Volume2 } from "lucide-react";
 import { nanoid } from "nanoid";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -39,14 +43,15 @@ export default function TeacherPanel({
   const [busy, setBusy] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [audio] = useState(() => new TeacherAudio(setAudioBlocked));
-  const [useBoard, setUseBoard] = useState(true);
   const toolsRef = useRef(boardTools);
   toolsRef.current = boardTools;
-  const useBoardRef = useRef(useBoard);
-  useBoardRef.current = useBoard;
   const [bridge] = useState(() =>
-    createTeacherTransport(boardId, setNotice, audio, setBusy, () =>
-      useBoardRef.current ? toolsRef.current : undefined,
+    createTeacherTransport(
+      boardId,
+      setNotice,
+      audio,
+      setBusy,
+      () => toolsRef.current,
     ),
   );
   const lifecycle = useRef(0);
@@ -68,8 +73,6 @@ export default function TeacherPanel({
       load="auto"
     >
       <TeacherControls
-        useBoard={useBoard}
-        setUseBoard={setUseBoard}
         boardId={boardId}
         suspended={suspended}
         notice={notice}
@@ -91,11 +94,7 @@ function TeacherControls({
   audio,
   audioBlocked,
   stop,
-  useBoard,
-  setUseBoard,
 }: {
-  useBoard: boolean;
-  setUseBoard: (value: boolean) => void;
   boardId: string;
   suspended: boolean;
   notice: string;
@@ -109,15 +108,24 @@ function TeacherControls({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [preferences, setPreferences] = useState(false);
+  const [welcome, setWelcome] = useState(false);
+  const greetingStarted = useRef(false);
   const control = useAgentKitControl();
   const controlRef = useRef(control);
   controlRef.current = control;
   const handle = useRef<AgentRunHandle | null>(null);
   const submitted = useRef(new Set<string>());
   const submitting = useRef(false);
+  const queuedDictation = useRef<FinalizedDictation | null>(null);
   const lastSubmission = useRef<FinalizedDictation | null>(null);
   const stopping = useRef(Promise.resolve());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; queuedDictation.current = null; };
+  }, []);
   const interrupt = useCallback(() => {
+    queuedDictation.current = null;
     const run = handle.current;
     handle.current = null;
     // stop() invalidates local events and audio synchronously, before its request.
@@ -130,16 +138,22 @@ function TeacherControls({
       );
   }, [stop, setNotice]);
   const submit = useCallback(
-    (dictation: FinalizedDictation) => {
-      if (submitted.current.has(dictation.id) || submitting.current) return;
+    function submitDictation(dictation: FinalizedDictation) {
+      if (submitted.current.has(dictation.id)) return;
+      if (submitting.current) {
+        queuedDictation.current = dictation;
+        return;
+      }
       submitted.current.add(dictation.id);
       submitting.current = true;
       lastSubmission.current = dictation;
-      setDraft(dictation.text);
-      setOpen(true);
+      setDraft("");
+      setOpen(false);
+      setWelcome(false);
       setNotice("");
       void (async () => {
         await stopping.current;
+        if (!mounted.current) return;
         const run = await controlRef.current.sendMessage({
           text: dictation.text,
           queueWhileRunning: false,
@@ -151,6 +165,7 @@ function TeacherControls({
       })()
         .catch((error: unknown) => {
           submitted.current.delete(dictation.id);
+          setDraft(dictation.text);
           setNotice(
             error instanceof Error
               ? error.message
@@ -159,6 +174,9 @@ function TeacherControls({
         })
         .finally(() => {
           submitting.current = false;
+          const queued = queuedDictation.current;
+          queuedDictation.current = null;
+          if (queued && mounted.current) submitDictation(queued);
         });
     },
     [setNotice],
@@ -166,6 +184,45 @@ function TeacherControls({
   useEffect(() => {
     if (suspended) interrupt();
   }, [suspended, interrupt]);
+  useEffect(() => {
+    if (suspended || greetingStarted.current) return;
+    let cancelled = false;
+    void (async () => {
+      const lesson = await callAction(
+        "get-teacher-session",
+        { boardId },
+        { method: "GET" },
+      );
+      if (
+        cancelled ||
+        greetingStarted.current ||
+        submitting.current ||
+        lesson?.turns.length
+      )
+        return;
+      const requestId = await welcomeRequestId(boardId);
+      if (cancelled || submitting.current) return;
+      greetingStarted.current = true;
+      setWelcome(true);
+      const run = await controlRef.current.sendMessage({
+        text: TEACHER_WELCOME_PROMPT,
+        queueWhileRunning: false,
+        metadata: { teacherRequestId: requestId, teacherWelcome: true },
+      });
+      handle.current = run;
+      await run.completed;
+      if (handle.current === run) handle.current = null;
+    })().catch(() => {
+      if (!cancelled)
+        setNotice(
+          "Acharya could not start the greeting. You can still ask a question.",
+        );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [boardId, suspended, setNotice]);
+
   return (
     <>
       <VoicePreview
@@ -175,10 +232,38 @@ function TeacherControls({
         onInterrupt={interrupt}
         teacherBusy={busy}
       />
+      {!suspended && (welcome || busy || notice || audioBlocked) && (
+        <aside className="board-teacher-feedback" aria-label="Teacher status">
+          {welcome && <p>{TEACHER_WELCOME_TEXT}</p>}
+          <p role="status">
+            {notice ||
+              (busy
+                ? "Acharya is explaining…"
+                : "Speak or write your question on the board.")}
+          </p>
+          {audioBlocked && (
+            <Button onClick={() => void audio.play()}>
+              <Volume2 aria-hidden="true" />
+              Play teacher voice
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => {
+              interrupt();
+              setWelcome(false);
+              setNotice("");
+            }}
+          >
+            <Square aria-hidden="true" />
+            {busy ? "Stop" : "Dismiss"}
+          </Button>
+        </aside>
+      )}
       <Button
         className="board-teacher-open"
         hidden={suspended || open}
-        aria-label={t("teacher.open")}
+        aria-label="Ask Acharya a question"
         onClick={() => setOpen(true)}
       >
         <MessageCircle aria-hidden="true" />
@@ -228,9 +313,6 @@ function TeacherControls({
             {t("teacher.play")}
           </Button>
         )}
-        <div className="board-teacher-chat">
-          <AgentKitChat composer={false} autoScroll />
-        </div>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -245,15 +327,6 @@ function TeacherControls({
             );
           }}
         >
-          <label className="board-teacher-board-option">
-            <input
-              type="checkbox"
-              checked={useBoard}
-              disabled={busy}
-              onChange={(event) => setUseBoard(event.target.checked)}
-            />{" "}
-            Read my board and write teaching steps
-          </label>
           <label htmlFor="teacher-question">{t("teacher.question")}</label>
           <textarea
             id="teacher-question"
@@ -263,6 +336,19 @@ function TeacherControls({
             placeholder={t("teacher.placeholder")}
             rows={2}
           />
+          <Button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              interrupt();
+              submit({
+                id: nanoid(),
+                text: "Please explain the question I have written or selected on the whiteboard, one step at a time.",
+              });
+            }}
+          >
+            Explain my board
+          </Button>
           <div className="flex flex-wrap gap-2">
             <Button type="submit" disabled={!draft.trim() || busy}>
               {t("teacher.send")}

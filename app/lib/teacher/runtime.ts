@@ -22,7 +22,7 @@ import { TeacherAudio } from "./audio";
 import type { BrowserTeachingTools } from "./board";
 
 export function needsLearningContext(text: string) {
-  return /\b(class|grade|teach me in|explain in|speak in|hinglish|practice question|my subject|my topic)\b|कक्षा|हिंदी में|अंग्रेजी में|अभ्यास/i.test(
+  return /\b(class|grade|teach me in|explain in|speak in|hinglish|practice question|my subject|my topic|in Hindi|in English)\b|क्लास|कक्षा|हिंदी में|अंग्रेजी में|अभ्यास/i.test(
     text,
   );
 }
@@ -40,6 +40,7 @@ export function createTeacherTransport(
   const captures = new Map<string, CapturedQuestion>();
   const applied = new Set<string>();
   let capture: CapturedQuestion | undefined;
+  let stepFailure = "";
   const applyStep = async (
     operationId: string,
     encodedAudio: string | null,
@@ -84,11 +85,8 @@ export function createTeacherTransport(
       });
     } catch (error) {
       if (!isActive()) return;
-      notice(
-        error instanceof Error
-          ? error.message
-          : "Could not apply the teaching step.",
-      );
+      stepFailure = error instanceof Error ? error.message : "Could not apply the teaching step.";
+      notice(stepFailure);
       await callAction("ack-teaching-step", {
         boardId,
         turnId: turn.id,
@@ -117,12 +115,15 @@ export function createTeacherTransport(
           ? turn.metadata.teacherRequestId
           : nanoid();
       activeChanged(true);
+      stepFailure = "";
       notice("");
       try {
         const tools = boardTools();
         capture =
-          captures.get(requestId) ??
-          (tools ? await tools.capture() : undefined);
+          turn.metadata?.teacherWelcome === true
+            ? undefined
+            : (captures.get(requestId) ??
+              (tools ? await tools.capture() : undefined));
         if (localEpoch !== epoch) throw new Error("Teacher turn stopped.");
         if (capture) {
           captures.set(requestId, capture);
@@ -198,6 +199,7 @@ export function createTeacherTransport(
         notice(event.message);
         return null;
       }
+      if (event.type === "error") notice(stepFailure || event.error);
       return event;
     },
   });

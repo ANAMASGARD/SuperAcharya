@@ -348,3 +348,17 @@ it("preserves editing, IME, modified shortcuts, dialog and button keyboard activ
   );
   expect(startCapture).not.toHaveBeenCalled();
 });
+
+
+it("mobile Send finishes active recording and hands off the finalized result once", async () => {
+  const finalized = vi.fn();
+  await act(async () => root.render(<VoicePreview boardId="drawing" onFinalized={finalized} />));
+  await act(async () => primary().click());
+  expect(phase()).toBe("active");
+  const send = host.querySelector<HTMLButtonElement>(".board-voice-send")!;
+  expect(send.disabled).toBe(false);
+  await act(async () => send.click());
+  expect(finish).toHaveBeenCalledTimes(1);
+  expect(finalized).toHaveBeenCalledTimes(1);
+  expect(finalized).toHaveBeenCalledWith(expect.objectContaining({ text: result.transcript }));
+});
