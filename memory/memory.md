@@ -402,3 +402,24 @@
 
 - Scope: deliver the recorded visual-teaching, narration and microphone-readiness changes. The preceding entries contain the actual test results and remaining physical-device and deployment limitations.
 - Delivery: user requested staging, commit and push on main; no production deployment or migration requested.
+
+## 2026-11-10 08:27 IST — Investigate deployed board image error
+- Request/scope: diagnose the screenshot showing a missing saved image reference on the hosted whiteboard.
+- Findings: current client raises that exact message when a scene image file ID lacks matching asset metadata, before requesting image bytes. The scene-file scan includes deleted image elements; whether this caused the production board failure is unverified. Private image storage configuration and production board data were not inspected.
+- Verification/blockers: inspected board load/save and storage code and documentation; Vercel deployment lookup returned 403 pending team authorization. No production writes, code changes, deployment, or browser verification. No tests applicable to this diagnosis.
+- Next concrete step: inspect the deployed version and authorized board metadata to identify missing IDs and whether they belong to deleted images or other scene elements.
+- Git status: main; this handoff is unstaged and uncommitted.
+
+## 2026-11-10 08:30 IST — Break failed-board recovery navigation loop
+- Scope: user reported Open drawings appears unresponsive on the deployed missing-image error.
+- Confirmed in source: the failure button navigated to /whiteboard, whose workspace immediately redirects to the latest board, reopening the failed drawing.
+- Implemented: failure screen now expands an inline drawing picker with a new-drawing action, loading/error/retry feedback, and current-board marker. Uses existing authorized actions and save-before-navigation helpers. Does not remove or repair image records.
+- Verification: pnpm run typecheck passed; pnpm agent-native:doctor clean; pnpm run build passed (node preset); pnpm exec vitest run app/lib/whiteboard/save-queue.test.ts passed 4 tests; git diff --check passed. No configured lint script. Browser interaction and authenticated production verification remain outstanding; existing tests do not directly exercise the new picker.
+- Next: browser-test recovery controls, then publish only with explicit authorization. Production missing-image cause remains unverified.
+- Git: main; BoardEditor.tsx and memory/memory.md unstaged/uncommitted. No push, deployment, or production data mutation.
+
+## 2026-11-10 08:33 IST — Verify and publish recovery fix
+- User explicitly authorized build, tests, staging, commit and push.
+- Added a happy-dom interaction regression test covering recovery picker opening without redirect, current-board disabling, other-board navigation, and new-board creation. Corrected test mock setup and IDs before passing.
+- Verification: pnpm run build passed (node preset); pnpm run typecheck passed, including after the new test; pnpm agent-native:doctor clean; pnpm test passed 160 tests with one PostgreSQL-dependent test skipped; separate pnpm exec vitest run app/components/board/BoardEditor.recovery.test.tsx passed one test. No lint script configured. Authenticated browser and deployed recovery remain unverified. Missing-image data diagnosis is still open.
+- Delivery: main; staging only recovery code, regression test and this handoff; DCO-signed commit and push results reported in chat. No production data changes or explicit deployment command.

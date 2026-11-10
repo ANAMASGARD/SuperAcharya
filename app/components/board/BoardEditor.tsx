@@ -578,9 +578,36 @@ export default function BoardEditor({ boardId }: { boardId: string }) {
             >
               {t("whiteboard.retry")}
             </Button>
-            <Button variant="outline" onClick={() => navigate("/whiteboard")}>
+            <Button variant="outline" onClick={() => setDialog("open")}>
               {t("whiteboard.open")}
             </Button>
+            {dialog === "open" && (
+              <div className="w-full max-w-md border-2 border-border bg-background p-4">
+                <Button disabled={busy} onClick={() => void perform(newDrawing)}>
+                  {t("whiteboard.new")}
+                </Button>
+                {listQuery.isPending && <p role="status">{t("whiteboard.loading")}</p>}
+                {listQuery.error && (
+                  <div role="alert">
+                    <p>{listQuery.error.message}</p>
+                    <Button onClick={() => void listQuery.refetch()}>{t("whiteboard.retry")}</Button>
+                  </div>
+                )}
+                <div className="max-h-[40vh] overflow-auto">
+                  {listQuery.data && boardListSchema.parse(listQuery.data).boards.map((board) => (
+                    <Button
+                      key={board.id}
+                      variant="outline"
+                      className="mt-2 w-full"
+                      disabled={busy || board.id === boardId}
+                      onClick={() => void perform(() => go(`/whiteboard/${board.id}`))}
+                    >
+                      {board.title}{board.id === boardId ? ` · ${t("whiteboard.current")}` : ""}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
