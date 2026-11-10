@@ -1,229 +1,281 @@
 # Super Acharya
 
-Super Acharya is a whiteboard-first AI teacher. Students draw, type, or speak a
-question on an editable Excalidraw board, and Acharya writes textbook-style
-mathematics one line at a time while explaining aloud.
+**An AI teacher that listens, explains, and writes beside you on a shared whiteboard.**
 
-Built on the Agent-Native standalone application with React, TypeScript, Vite,
-and Nitro. The classroom is `/whiteboard`; the original Chat and Settings
-interfaces remain available.
+[![Watch the Super Acharya demo on YouTube](https://img.youtube.com/vi/xcTYN5GWVvM/hqdefault.jpg)](https://youtu.be/xcTYN5GWVvM)
 
-## What works today
+**[▶ Watch the video demo](https://youtu.be/xcTYN5GWVvM)** · [Open the classroom](https://super-acharya.vercel.app/) · [Local setup](#run-locally) · [How we use Agent-Native](#how-we-use-agent-native)
 
-- **Private whiteboards:** multiple named drawings, latest-drawing reopening,
-  serialized autosave, revision conflicts, personal libraries, native drawing
-  tools, undo/redo, `.excalidraw` import/export, and PNG/SVG export controls.
-- **Spoken questions:** Gnani Prisma `prisma-v3.0` streams live transcription.
-  Hold Space in the classroom to speak and release to submit a successful final
-  transcript. Click/tap the microphone for hands-free capture; Pause or Send
-  finalizes it. Text editing, menus, and dialogs keep their normal keyboard use.
-  Partial, failed, and truncated transcripts do not automatically start lessons.
-- **Board understanding:** a question can include a fresh capture of the current
-  board or selected elements. The teacher asks about important ambiguity before
-  solving and preserves student work.
-- **Progressive teaching:** complete, validated lines stream from the tutor.
-  Each formula or explanation is written and narrated individually, with the
-  next line waiting for playback and saved-scene acknowledgement. The first
-  line can start before the whole lesson finishes generating.
-- **Textbook notation:** MathJax renders fractions, roots, powers, and Greek
-  symbols as movable formula objects. Formula source is saved and regenerated
-  on reload. Board writing is English; narration can be Hindi, Hinglish, or
-  English, independently of the written notation.
-- **Conversation context:** owned teacher sessions retain conversation history
-  and learning preferences. The model receives the latest 50 turns plus current
-  preferences and board context. Clocked Fill extracts explicitly supplied
-  preferences such as class, subject, topic, and spoken language.
-- **Teacher voice:** Sarvam `bulbul:v4-flash` narration, a searchable 222-entry
-  speaker catalog, language filtering, audio samples, and favorites. Voice and
-  favorites are saved per drawing. The teacher uses a respectful, conversational
-  tone and attempts a context-aware greeting on each classroom visit.
-- **Interruption:** Stop immediately clears local playback and cancels the active
-  generation. Completed board work remains. Ordinary clicks, screenshots, and
-  tab focus changes do not cancel a submitted lesson.
-- **Compact classroom controls:** neo-brutalist buttons, light/dark switching,
-  visible processing feedback, and a collapsible transcript panel that preserves
-  its text while making more room for the board.
-- **Installable PWA:** Acharya icons, standalone launch, responsive controls,
-  safe-area support, public asset caching, and an offline fallback page.
+Super Acharya turns a student's question into a lesson on an editable Excalidraw canvas. Draw an equation, type a question, or ask aloud. The teacher reads the current work, writes formulas and relevant diagrams progressively, and explains each step through speech. Students can interrupt, change their work, and ask about what is already on the board.
 
-## How teaching works
+The classroom combines a calm writing surface with bold borders, yellow controls, and a compact voice interface. English board notation and Hindi, Hinglish, or English narration can coexist in the same lesson.
 
-```text
-Voice (Gnani STT) / typed question / current board capture
-                         ↓
-Authenticated, duplicate-safe teaching turn
-                         ↓
-LangGraph: Orchestrator → Input/Vision → Tutor → Drawing Planner
-              │                           │
-         Clocked Fill              OpenAI Responses
-                         ↓
-Validated line + matching narration
-                         ↓
-Owned shared action → durable board operation
-                         ↓
-Excalidraw renders + Sarvam speaks + scene saves
-                         ↓
-Verified acknowledgement → next line
+Built with the **Agent-Native standalone framework**, React, TypeScript, Vite, and LangGraph.js. The initial focus is a useful mathematics teaching workflow; broader subject coverage is an ongoing goal.
+
+## A lesson with Acharya
+
+1. **Open a drawing.** Create a named board or reopen your saved work at `/whiteboard`.
+2. **Ask your question.** Write on the canvas, select relevant elements, type, or use the microphone. Board-enabled questions include a fresh capture of the selected work or current drawing.
+3. **Work through the explanation.** Complete formulas and short explanations appear progressively, paired with spoken narration. Relevant static diagrams are editable board elements.
+4. **Interrupt and follow up.** Stop clears local playback immediately. Ask for clarification or an explanation of existing work; completed elements remain on the board.
+5. **Save and revisit.** Autosave retains the editable scene. Formula source is preserved so equations can be regenerated when the drawing reopens.
+
+Hold **Space** in the classroom to speak, then release to finalize and submit a successful transcript. Click or tap the microphone for toggle recording. Text fields, IME composition, menus, and dialogs retain their normal keyboard behavior; use Excalidraw's hand tool to pan the canvas.
+
+## Classroom screenshots
+
+### Visual explanations
+
+A tangent lesson connects the side names, the angle, and the ratio on the same canvas.
+
+![Super Acharya whiteboard showing a labeled right triangle and the tangent ratio, with voice transcription controls](docs/images/tangent-triangle.png)
+
+### Step-by-step mathematics
+
+Typeset fractions and trigonometric identities sit alongside explanatory text and teacher playback controls.
+
+![A progressive derivation of tan theta plus cot theta with mathematical restrictions and a Stop control](docs/images/trigonometric-derivation.png)
+
+### Spoken follow-ups
+
+The transcript panel keeps recognized speech visible while the student asks about a worked solution.
+
+![A trigonometric solution on the board with an active spoken follow-up transcript](docs/images/spoken-follow-up.png)
+
+### Editable graphs and student control
+
+The board retains student edits and reports when an older teaching step conflicts with the current scene.
+
+![Editable sine and cosine curves with a message confirming that student changes were preserved](docs/images/editable-trigonometric-graph.png)
+
+These are unmodified screenshots of development sessions, including transcription and conflict feedback. Speech recognition and generated explanations can contain mistakes; the screenshots are not a guarantee of mathematical correctness. The current sine/cosine template uses radians, even if surrounding generated text suggests a different unit.
+
+## What the project implements
+
+| Capability                   | Current behavior                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Private drawings             | Named boards, latest-board reopening, revision-aware autosave, personal libraries, native undo/redo, and Excalidraw import/export.                                                         |
+| Board understanding          | Fresh selected-element or full-board captures, current scene context, and clarification when notation or the requested problem is ambiguous.                                               |
+| Progressive lessons          | Validated complete lines paired with narration; playback and saved-scene acknowledgement govern progression.                                                                               |
+| Textbook formulas            | MathJax-rendered fractions, roots, exponents, and symbols; equation source persists with the movable visual object.                                                                        |
+| Static visual templates      | Right triangles, unit circles, sine/cosine curves, parabolas, ellipses, and hyperbolas rendered as editable Excalidraw elements.                                                           |
+| Explain existing work        | Narration-only steps can explain an existing diagram or solution without adding duplicate board content.                                                                                   |
+| Voice input and output       | Gnani streaming transcription and Sarvam speech synthesis, with language-aware voice selection, samples, and per-drawing favorites.                                                        |
+| Lesson context               | Owned conversation history, recent-turn context, and saved learning preferences; Clocked Fill extracts explicitly supplied preferences.                                                    |
+| Interruption and concurrency | Immediate local Stop, server cancellation, generation checks, duplicate-safe submissions, and controlling-tab ownership.                                                                   |
+| Authentication               | Agent-Native sessions and Google sign-in; the current source also implements Brevo signup verification and password-plus-email-code sign-in. Hosted email-auth rollout is a separate step. |
+| Installable app              | PWA manifest, app icons, public-asset caching, and an offline fallback. AI lessons and cloud persistence require connectivity.                                                             |
+
+## How we use Agent-Native
+
+Agent-Native provides the application's identity, capability, data, and agent-runtime infrastructure. The classroom builds on those contracts rather than maintaining a separate set of privileged agent mutations.
+
+### 1. Shared actions for UI and agent capabilities
+
+Application operations live in [`actions/`](actions/), using `defineAction` with Zod input/output schemas and server-derived ownership. For example, [`save-board`](actions/save-board.ts) checks the drawing revision, and [`enqueue-teaching-step`](actions/enqueue-teaching-step.ts) persists a validated operation for an active generation.
+
+The teacher publishes steps and updates learning context through **`executeAgentToolCall`**, reusing the framework's action authorization path. The browser uses action calls to read, save, and acknowledge the same durable records. See [`server/lib/teacher/tool.ts`](server/lib/teacher/tool.ts).
+
+| Shared action                                   | Role in the classroom                                                             |
+| ----------------------------------------------- | --------------------------------------------------------------------------------- |
+| `get-board`, `save-board`                       | Read owned scene data and save with revision conflict checks.                     |
+| `ensure-teacher-session`, `get-teacher-session` | Create or read the drawing's authoritative teacher session.                       |
+| `start-teacher-turn`                            | Admit a stable request identity and reject competing or inconsistent submissions. |
+| `update-teacher-context`                        | Apply validated learning preferences with revision protection.                    |
+| `enqueue-teaching-step`, `list-teaching-steps`  | Persist and retrieve ordered teaching operations.                                 |
+| `ack-teaching-step`                             | Record completion after playback, successful saving, and scene verification.      |
+| `cancel-teacher-turn`                           | Cancel the specified generation without clearing a newer run.                     |
+| `get-speech-status`                             | Check speech configuration for an owned board without exposing credentials.       |
+
+A queued operation is not reported as a finished drawing. The browser must apply and verify it before acknowledging completion.
+
+### 2. A supported runtime bridge to LangGraph
+
+The classroom uses **`createHttpAgentChatRuntime`** and **`createAgentKitProtocolAdapter`** from Agent-Native to connect the teaching workflow to the browser. The adapter owns submission, streamed events, audio cleanup, and stale-generation rejection. See [`app/lib/teacher/runtime.ts`](app/lib/teacher/runtime.ts).
+
+LangGraph provides four logical roles: **Orchestrator → Input/Vision → Tutor → Drawing Planner**. Routing skips unnecessary work, and layout/rendering use deterministic code. These roles do not imply four independent assistants or four model calls on every request. See [`server/lib/teacher/graph.ts`](server/lib/teacher/graph.ts).
+
+Generic Chat remains available at `/chat`, but does not control the classroom teacher's turn-admission and step-execution tools. The teacher has its own guarded thread namespace and one authoritative session per drawing.
+
+### 3. Authentication, persistence, and live updates
+
+- **Identity:** the existing Agent-Native auth/session layer supplies ownership. Public Better Auth plugins add email verification and second-factor codes without introducing a second identity system. See [`server/plugins/auth.ts`](server/plugins/auth.ts) and [email authentication](docs/email-auth.md).
+- **Structured state:** Drizzle application tables store boards, lesson turns, preferences, and operation records. Teacher checkpoints use the official LangGraph PostgreSQL saver. See [`server/db/schema.ts`](server/db/schema.ts) and [`server/lib/teacher/checkpoints.ts`](server/lib/teacher/checkpoints.ts).
+- **Live synchronization:** [`app/root.tsx`](app/root.tsx) uses `useDbSync` to invalidate data after database changes. Durable action reads and operation records remain authoritative; notifications do not replace the operation queue.
+- **Provider credentials:** the teacher and speech integrations resolve scoped Settings credentials server-side, with explicit deployment-owned fallbacks. Pre-login Brevo delivery uses deployment-owned credentials because no authenticated workspace exists yet.
+- **Framework tooling:** `pnpm action` exposes shared actions and installed documentation. `pnpm agent-native:doctor` checks framework guards such as authorization scoping, migrations, and credential boundaries.
+
+Custom authenticated streaming routes carry microphone audio and teacher events. Ordinary board CRUD stays in shared actions. Database synchronization is not used as a per-frame animation clock or audio transport.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Student: draw, select, type, or speak] --> B[Browser: current board and question]
+    B --> C[Agent-Native session and turn admission]
+    C --> D[LangGraph teaching workflow]
+    D --> E[Validated step and matching narration]
+    E --> F[Agent-Native authorized shared actions]
+    F --> G[(SQL: lesson and board operations)]
+    G --> H[Browser reads pending steps]
+    E --> I[Sarvam narration]
+    H --> J[Excalidraw rendering and audio playback]
+    I --> J
+    J --> K[Save scene, verify, acknowledge]
+    K --> D
 ```
 
-The four roles form one workflow, not four mandatory model calls per turn.
-Rendering and layout are deterministic. Agent-Native shared actions enforce
-ownership and validation for both UI and agent operations. Stable request IDs,
-generation checks, and controlling-tab ownership prevent duplicate submissions
-and stale output from overwriting newer work.
+Gnani handles speech-to-text before question submission. OpenAI supplies input understanding and tutoring, Clocked Fill handles selected preference extraction, and Sarvam supplies teacher speech. Cancellation IDs and operation sequencing connect these services to the accepted lesson state.
 
-## Stack
+## Technology stack
 
-| Area | Implementation |
-| --- | --- |
-| App and authentication | Agent-Native / Toolkit / AgentKit 0.226.0 |
-| Frontend | React, TypeScript, Vite, React Router, neo-brutalist UI |
-| Board and formulas | Excalidraw 0.18.1, MathJax 3.2.2 |
-| Teaching | LangGraph.js, OpenAI Responses through the AI SDK |
-| Learning preferences | Clocked Fill, validated against application schemas |
-| Speech | Gnani streaming STT, Sarvam TTS |
-| Persistence | Drizzle, PostgreSQL/Neon, official LangGraph Postgres checkpointer |
-| Local board storage | PGlite when PostgreSQL is not configured |
-| Hosting | Nitro Node build or the configured Vercel preset |
+| Layer              | Technology                                                        |
+| ------------------ | ----------------------------------------------------------------- |
+| Application        | Agent-Native Core, Toolkit, and AgentKit `0.226.0`                |
+| Interface          | React, TypeScript, Vite, React Router, Tailwind CSS               |
+| Whiteboard         | Excalidraw `0.18.1`, MathJax `3.2.2`                              |
+| Teaching workflow  | LangGraph.js `1.7.2`, AI SDK, OpenAI Responses                    |
+| Speech             | Gnani Prisma `prisma-v3.0`, Sarvam `bulbul:v4-flash`              |
+| Identity and email | Agent-Native auth, Better Auth `1.7.6`, Brevo                     |
+| Data               | Drizzle, PostgreSQL/Neon, PGlite for local board-only development |
+| Server and hosting | Nitro; Node server build or configured Vercel preset              |
+
+See [`package.json`](package.json) and [`pnpm-lock.yaml`](pnpm-lock.yaml) for the complete dependency set. Provider access, credits, and model availability depend on your accounts.
 
 ## Run locally
 
-Use Node **22.22 or newer** and the pinned **pnpm 10.29.1**. Node 24 is used for
-the deployment setup.
+### Prerequisites
+
+- **Node.js 22.22.0 or newer**; the deployment setup uses Node 24.
+- **pnpm 10.29.1**, pinned in `package.json`.
+- **PostgreSQL** for AI teaching and durable graph checkpoints. Neon is supported. Without PostgreSQL, PGlite supports local board development, but the teacher does not execute.
+- Provider credentials for the features you want to exercise. The full voice lesson uses OpenAI, Gnani, Sarvam, and Clocked.
+
+### 1. Install
 
 ```bash
 git clone https://github.com/ANAMASGARD/SuperAcharya.git
 cd SuperAcharya
 corepack enable
 pnpm install --frozen-lockfile
+
+# On a fresh clone; do not replace an existing local configuration.
+cp .env.example .env.local
 ```
 
-Create an ignored `.env.local` using [.env.example](./.env.example) as the
-template. Do not overwrite an existing local configuration. Configure the
-following server-only values for the full voice-teaching flow:
+### 2. Configure the server
+
+Edit the ignored `.env.local`. Use values from your own development services:
 
 ```dotenv
-DATABASE_URL=
-DATABASE_URL_UNPOOLED=
-BETTER_AUTH_SECRET=
-GNANI_API_KEY=
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
+DATABASE_URL_UNPOOLED=postgresql://USER:PASSWORD@DIRECT_HOST:5432/DATABASE
+BETTER_AUTH_SECRET=replace-with-a-stable-random-secret-of-at-least-32-characters
+
 OPENAI_API_KEY=
-CLOCKED_API_KEY=
+GNANI_API_KEY=
 SARVAM_API_KEY=
+CLOCKED_API_KEY=
 
 TEACHER_OPENAI_MODEL=gpt-6-luna
 SARVAM_TTS_SPEAKER=kalpit_en_edtech
 SARVAM_TTS_PACE=1.25
 ```
 
-Use the PostgreSQL pooled URL for runtime access and the direct URL for
-migrations/checkpoint setup. Teacher execution requires PostgreSQL; PGlite
-supports the board without the teacher. Use a stable authentication secret of
-at least 32 characters and configure the sign-in providers you intend to use.
-OAuth variables and callback paths are documented in `.env.example`.
+The placeholders must be replaced before using those services. The pooled database URL serves runtime queries; the direct URL is used for migrations/checkpoint setup. Use a development database, not your production database.
 
-Scoped provider credentials in Settings take precedence over the configured
-server environment. Never prefix provider secrets with `VITE_` or commit real
-keys. Restart the server after changing environment values. Locally, leave
-`BETTER_AUTH_URL` unset for origin inference.
+Leave `BETTER_AUTH_URL` unset locally so the framework can infer the request origin. Scoped credentials configured in Settings take precedence for supported teaching/speech providers. Never prefix secrets with `VITE_` or commit real values. Restart the server after changing configuration.
 
-Initialize the official teacher checkpoint tables once, **only after confirming
-that `.env.local` points to the intended development database**:
+For **real email signup and sign-in**, also configure:
+
+```dotenv
+BREVO_SENDER_EMAIL=your-verified-sender@example.com
+BREVO_API_KEY=
+
+# Alternatively, use BREVO_CLIENT_ID and BREVO_CLIENT_SECRET
+# for a private Brevo M2M app scoped to transactional.email:write.
+```
+
+Missing Brevo delivery configuration blocks email authentication. Google sign-in is configured independently using the client credentials and callback paths in [`.env.example`](.env.example). See [email authentication](docs/email-auth.md) for verification, resend, expiry, and deployment requirements.
+
+### 3. Initialize teacher checkpoints and start
+
+After confirming the URLs point to the intended development PostgreSQL database:
 
 ```bash
 pnpm exec tsx --env-file=.env.local scripts/setup-teacher-checkpoints.ts
 pnpm dev
 ```
 
-Open the URL printed by the development server. The development environment can
-use the framework's automatic development account; set
-`AGENT_NATIVE_DISABLE_AUTO_DEV_ACCOUNT=1` when testing real sign-in. Production
-must retain authentication. Excalidraw fonts are copied automatically by the
-`predev` and `prebuild` scripts.
+Checkpoint setup creates the `teacher_graph` schema and verifies it with a readback. Application tables use the existing named migration lifecycle; checkpoint setup is a separate explicit step. For a board-only PGlite trial, omit the PostgreSQL variables and skip the checkpoint command.
 
-Application tables use the existing named Drizzle migration lifecycle.
-Production migrations and checkpoint initialization are explicit operations,
-not deployment build steps. See [teacher setup](./docs/teacher.md) and
-[deployment instructions](./docs/vercel-deployment.md).
+Open the URL printed by the development server and navigate to `/whiteboard`. Excalidraw fonts/assets are copied automatically by `predev` and `prebuild`.
 
-## Verification
+The framework can use an automatic development account locally. Set `AGENT_NATIVE_DISABLE_AUTO_DEV_ACCOUNT=1` to exercise actual sign-in and email codes. Keep authentication enabled in production. Microphone use requires browser permission and a secure context such as HTTPS or localhost.
+
+### 4. Try a lesson
+
+Write `x² + 5x + 6 = 0` and ask Acharya to explain the factorization. Watch each accepted line appear with narration, then use **Stop** and ask a follow-up about one step. Reopen the drawing to check saved work. Try a right-triangle question to exercise an editable visual template.
+
+## Development and verification
 
 ```bash
 pnpm run typecheck
-pnpm exec vitest run server/lib/teacher app/lib/teacher \
-  app/components/board/VoicePreview.test.tsx shared/teacher-welcome.test.ts \
-  app/lib/whiteboard/save-queue.test.ts
+pnpm test
 pnpm agent-native:doctor
 pnpm run build
-git diff --check
 ```
 
-Set `TEACHER_TEST_POSTGRES_URL` to a **dedicated disposable PostgreSQL database**
-to include the teacher database integration tests. Without it, those tests skip;
-never point this test variable at a production database. No lint script is
-currently configured: typecheck and build are not lint checks.
+For focused teacher verification:
 
-The latest local verification passed 70 focused tests, typecheck, doctor, and
-the production build. Live local checks verified ordered formula rendering,
-saved operations, Stop followed by a successful new turn, and transcript
-collapse at desktop and mobile viewport sizes. Existing nonfatal dependency and
-bundle warnings remain. Detailed evidence and boundaries are recorded in
-[project memory](./memory/memory.md).
+```bash
+pnpm exec vitest run server/lib/teacher app/lib/teacher \
+  app/components/board/VoicePreview.test.tsx \
+  app/lib/whiteboard/save-queue.test.ts
+```
 
-## Deployment and PWA behavior
+Database integration tests require `TEACHER_TEST_POSTGRES_URL` pointing to a **dedicated disposable PostgreSQL database**; they skip when it is absent. There is no configured lint script. A successful build does not establish physical-microphone accuracy, inbox delivery, or a verified production release. Test evidence and known gaps are recorded in [`memory/memory.md`](memory/memory.md).
 
-For a conventional Node server:
+## Deployment
+
+For a persistent Node server:
 
 ```bash
 pnpm run build
 pnpm start
 ```
 
-For Vercel, follow the existing [Vercel setup](./docs/vercel-deployment.md),
-including the Nitro preset, environment variables, OAuth callbacks, and
-streaming checks. A successful local build does not prove that the latest
-changes are deployed or that hosted voice sessions work. Current configuration
-allows a 270-second teacher request within a 300-second function budget;
-longer microphone sessions need a compatible hosting lifetime.
+For Vercel, use the repository's Nitro preset and [deployment guide](docs/vercel-deployment.md). Configure server secrets, database migrations, checkpoint tables, and OAuth callbacks for the target environment. The email-auth change also requires the additive rate-limit migration and Brevo configuration before promotion; pushing Git commits alone does not establish that those release steps ran.
 
-The production service worker caches public assets and an offline fallback,
-not authenticated pages, private drawings, audio, or transcripts. Sign-in,
-cloud saving, and AI teaching require a connection. Installation and greeting
-autoplay depend on browser support; blocked autoplay exposes a playback control.
-See [PWA details](./docs/pwa.md).
+Long speech sessions depend on the host's connection lifetime. The current teacher request cutoff is 270 seconds within a configured 300-second function budget. Verify actual streaming and WebSocket behavior on your selected host.
 
-## Current limits
+The PWA caches public assets and an offline fallback, not private drawings, sessions, audio, or transcripts. Cloud saving, sign-in, and AI teaching require a network connection. See [PWA behavior](docs/pwa.md).
 
-- **Private image storage is deferred.** Upload routes and reference validation
-  exist, but durable saving of ordinary imported images needs the existing
-  private storage integration configured in Settings. Generated formula objects
-  regenerate from source and do not depend on that storage.
-- **No offline lesson recovery or background worker.** Keep an unsaved drawing
-  open or export it. Reloading, closing the page, or losing the connection can
-  interrupt teaching; completed work remains, but audio does not resume
-  automatically.
-- **Line-level progression, not simulated handwriting.** Each formula is a
-  complete typeset object. New lessons are bounded to 12 line operations;
-  character/stroke animation and structured geometry diagrams are not implemented.
-- **No formal symbolic verifier.** Mathematical output remains model-generated.
-  The reliable target is a focused school-mathematics lesson, not verified
-  universal coverage across Mathematics, Physics, Chemistry, and Biology.
-- **Bounded conversation context.** Durable history exists, but older-history
-  summarization/retrieval and unlimited model memory are not implemented.
-- **Provider and device limits remain.** STT can mishear equations, latency varies,
-  and not every catalog voice or physical mobile device has been tested.
-  Clocked Decide, multiplayer, and public board sharing are outside this slice.
+## Boundaries and next steps
 
-## Project documentation
+- **Mathematical correctness:** there is no connected formal symbolic verifier. STT can mishear expressions, and generated reasoning or diagram labels can be wrong. Check units, domains, and intermediate steps.
+- **Visuals:** current diagrams are static editable templates for specific equations. Arbitrary-function plotting, interactive JSXGraph widgets, parameter revision controls, and physics simulations remain future work.
+- **Progression:** lessons are bounded to 12 line operations. Rendering is progressive typeset output, not character-by-character handwriting animation.
+- **Recovery:** completed work is preserved, but page closure, reload, or broken connections do not provide automatic audio resumption or offline lesson recovery. Dedicated semantic AI-step undo remains pending; native editor undo is available.
+- **Images:** durable storage of ordinary imported images needs the configured private storage integration. Generated equations and native visual templates do not require uploaded-image storage.
+- **Context and devices:** model context uses the latest 50 turns plus saved preferences. Unlimited memory, broad curriculum verification, multiplayer, and comprehensive physical-device testing are not claimed.
+- **Microphone privacy:** the classroom keeps a prepared microphone handle, so the browser indicator may remain on while idle. Idle input is not captured or uploaded; raw microphone recordings are not persisted by this app.
 
-- [Whiteboards, autosave, images, and action contracts](./docs/whiteboard.md)
-- [Speech controls and provider behavior](./docs/speech.md)
-- [Teacher execution, ownership, and recovery](./docs/teacher.md)
-- [PWA installation and offline boundaries](./docs/pwa.md)
-- [Vercel deployment](./docs/vercel-deployment.md)
-- [Implementation history and test evidence](./memory/memory.md)
-- [Product vision and contributor rules](./AGENTS.md)
+## Project map and documentation
 
-Super Acharya builds on the Agent-Native Chat starter. The original generic
-Chat interface remains available at `/chat`; the classroom is the primary
-authenticated workflow.
+| Location                                         | Purpose                                                                |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| [`actions/`](actions/)                           | Shared capabilities for authorized reads and mutations                 |
+| [`app/components/board/`](app/components/board/) | Classroom, canvas, transcript, and voice controls                      |
+| [`app/lib/teacher/`](app/lib/teacher/)           | Runtime adapter, scene rendering, audio, and playback coordination     |
+| [`server/lib/teacher/`](server/lib/teacher/)     | Workflow, providers, lifecycle, checkpoints, and operation persistence |
+| [`shared/`](shared/)                             | Zod contracts for boards, turns, events, and visual specifications     |
+| [`server/db/`](server/db/)                       | Application schema and migrations                                      |
+
+Read more: [Whiteboards](docs/whiteboard.md) · [Teacher workflow](docs/teacher.md) · [Speech](docs/speech.md) · [Email authentication](docs/email-auth.md) · [Deployment](docs/vercel-deployment.md) · [Contributor rules](AGENTS.md).
+
+## Origins and acknowledgements
+
+Super Acharya builds on the **Agent-Native Chat starter**, retaining its shared authentication, Chat, Settings, action infrastructure, and agent integration. Project-specific work adds the whiteboard classroom, owned drawing persistence, teacher workflow, speech adapters, progressive rendering/narration, visual templates, interruption handling, learning preferences, and email-code authentication.
+
+Excalidraw supplies the drawing editor, MathJax supplies mathematical typesetting, LangGraph supplies workflow orchestration/checkpoint integration, and the named model/speech/email providers supply their respective services. Third-party components remain subject to their own licenses and terms. The screenshots above are supplied project captures; the linked video demonstrates the application.

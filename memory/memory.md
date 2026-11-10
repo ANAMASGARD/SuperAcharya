@@ -465,3 +465,11 @@
 - Not verified: no new browser smoke, production migration, credential configuration or deployment in this task; previous hosted authentication limitations remain.
 - Git: main; user authorized staging all pending project changes, DCO-signed commit and push to origin/main. Actual commit/push results reported in chat after execution. Local secret files remain ignored.
 - Next concrete step: separately authorized hosted configuration/migration/deployment and full authentication browser verification.
+
+## 2026-11-10 13:32 IST — README, demo video and classroom screenshots
+- Request/scope: rewrite README with the supplied YouTube demo, four supplied screenshots, project details, local setup and concrete Agent-Native integration; user explicitly authorized staging, commit and push.
+- Implemented: linked YouTube thumbnail near the top; four original PNGs copied byte-for-byte into docs/images with captions and alt text; classroom walkthrough, feature status, source-linked action/runtime/auth/sync explanations, Mermaid workflow, provider setup, board-only/full-teacher paths, email auth, checks, deployment boundaries and starter/third-party attribution. Corrected outdated README claims that static diagrams were absent.
+- Verification: all relative README targets and named action files exist; all four PNGs match supplied originals; code fences balanced; pnpm exec oxfmt --check README.md passed after formatting; git diff --check passed. Source and installed framework docs were inspected.
+- Not verified: no new installation, live provider/deployment check or browser smoke. Application build/typecheck/tests not rerun because only documentation and image assets changed. Existing auth/production limitations are retained.
+- Git: main; only README, four screenshot assets and this handoff included in the authorized DCO-signed commit/push. Results reported in chat after execution.
+- Next concrete step: review the published README and follow the linked setup guide for a fresh development environment.
