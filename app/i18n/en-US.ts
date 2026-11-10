@@ -1,4 +1,22 @@
 const messages = {
+  emailAuth: {
+    verifyTitle: "Verify your email",
+    signinTitle: "Check your email",
+    instructions: "Enter the six-digit code. Codes expire after five minutes.",
+    label: "Email code",
+    sent: "Code sent. Check your inbox and spam folder.",
+    sendFailed: "We couldn't send the code. Try again shortly.",
+    network: "Can't reach the server. Try again.",
+    invalidFormat: "Enter the six-digit code from your email.",
+    invalidCode: "That code is invalid or expired. Request another code.",
+    verified: "Email verified. Go back to sign in to continue.",
+    busy: "Please wait…",
+    verify: "Verify and continue",
+    resend: "Send another code",
+    back: "Back to sign in",
+    sentTo: "A verification code was sent to {{email}}.",
+    cooldown: "Resend in {{seconds}}s",
+  },
   pwa: {
     install: "Install Acharya",
     status: "App connection and updates",

@@ -128,3 +128,11 @@ export const teacherOperations = pgTable(
     index("teacher_operations_turn_sequence").on(table.turnId, table.sequence),
   ],
 );
+
+// Ephemeral Better Auth request counters; no email addresses or OTPs.
+export const authRateLimits = pgTable("auth_rate_limits", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});

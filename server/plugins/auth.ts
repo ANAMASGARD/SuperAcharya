@@ -11,6 +11,7 @@ import {
 } from "@agent-native/toolkit/app/auth/server";
 
 import { buildExtraSocialProviders } from "../lib/better-auth-social-providers";
+import { emailAuthPlugins } from "../lib/email-auth";
 import { SIGN_IN_ENTRY_HTML } from "../lib/sign-in-entry-html";
 
 // Keep in sync with app/lib/public-routes.ts.
@@ -32,7 +33,10 @@ const authPlugin: ReturnType<typeof createToolkitAuthPlugin> = async (
     loginHtml: SIGN_IN_ENTRY_HTML,
     renderSignInPage: renderAuthPage,
     renderResetPasswordPage: renderAuthResetPasswordPage,
-    betterAuth: { socialProviders: buildExtraSocialProviders() },
+    betterAuth: {
+      socialProviders: buildExtraSocialProviders(),
+      plugins: emailAuthPlugins(),
+    },
   });
 };
 export default authPlugin;

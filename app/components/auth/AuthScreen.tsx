@@ -10,15 +10,12 @@ import {
   CredentialsForm,
   type AuthMode,
 } from "@/components/auth/CredentialsForm";
+import { EmailCodePanel } from "@/components/auth/EmailCodePanel";
 import type { Notice } from "@/components/auth/notice";
-import {
-  ForgotPanel,
-  TwoFactorPanel,
-  VerifyEmailPanel,
-} from "@/components/auth/SecondaryPanels";
+import { ForgotPanel } from "@/components/auth/SecondaryPanels";
 import { SocialButtons } from "@/components/auth/SocialButtons";
-import { resolveResumeHref } from "@/lib/auth-client";
 import { APP_TITLE } from "@/lib/app-config";
+import { resolveResumeHref } from "@/lib/auth-client";
 import { LANDING_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/public-routes";
 
 export type { AuthMode };
@@ -59,7 +56,10 @@ const COPY: Record<
 function noticeFromSearch(search: string): Notice | null {
   const params = new URLSearchParams(search);
   if (isVerificationLinkInvalid(params.get("error"))) {
-    return { kind: "error", text: "That verification link is invalid or has expired." };
+    return {
+      kind: "error",
+      text: "That verification link is invalid or has expired.",
+    };
   }
   if (params.get("verified")) {
     return { kind: "success", text: "Email verified. Sign in to continue." };
@@ -116,7 +116,11 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
               }}
               onTwoFactor={() => setView({ kind: "two-factor" })}
             />
-            <div className="flex items-center gap-3" role="separator" aria-label="or">
+            <div
+              className="flex items-center gap-3"
+              role="separator"
+              aria-label="or"
+            >
               <span className="h-0.5 flex-1 rounded-full bg-black" />
               <span className="font-head text-xs">or</span>
               <span className="h-0.5 flex-1 rounded-full bg-black" />
@@ -134,17 +138,31 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
           </div>
         );
       case "forgot":
-        return <ForgotPanel initialEmail={view.email} onBack={backToCredentials} />;
+        return (
+          <ForgotPanel initialEmail={view.email} onBack={backToCredentials} />
+        );
       case "verify-email":
         return (
-          <VerifyEmailPanel
+          <EmailCodePanel
+            key="verification"
+            purpose="verification"
+            onTwoFactor={() => {
+              pendingPassword.current = "";
+              setView({ kind: "two-factor" });
+            }}
             email={view.email}
             password={pendingPassword.current}
             onBack={backToCredentials}
           />
         );
       case "two-factor":
-        return <TwoFactorPanel onBack={backToCredentials} />;
+        return (
+          <EmailCodePanel
+            key="sign-in"
+            purpose="sign-in"
+            onBack={backToCredentials}
+          />
+        );
       default: {
         const unhandled: never = view;
         return unhandled;

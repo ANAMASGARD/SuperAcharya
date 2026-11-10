@@ -55,4 +55,12 @@ export const boardMigrations: MigrationEntry[] = [
     );
     CREATE INDEX IF NOT EXISTS teacher_operations_turn_sequence ON teacher_operations(turn_id, sequence);`,
   },
+  {
+    version: 5,
+    name: "email-auth-rate-limits-v1",
+    sql: `CREATE TABLE IF NOT EXISTS auth_rate_limits (
+      id TEXT PRIMARY KEY, key TEXT NOT NULL UNIQUE, count INTEGER NOT NULL,
+      last_request BIGINT NOT NULL
+    );`,
+  },
 ];

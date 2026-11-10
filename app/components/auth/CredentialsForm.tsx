@@ -128,11 +128,15 @@ export function CredentialsForm({
       const resume = resolveResumeHref(window.location.search);
 
       if (isSignUp) {
-        const created = await requestAuth("/_agent-native/auth/register", {
-          email: address,
-          password,
-          callbackURL: resume,
-        });
+        const created = await requestAuth(
+          "/_agent-native/auth/ba/sign-up/email",
+          {
+            email: address,
+            name: address.split("@")[0],
+            password,
+            callbackURL: resume,
+          },
+        );
         if (!created.ok) {
           return fail(
             authErrorMessage(
@@ -141,9 +145,10 @@ export function CredentialsForm({
             ),
           );
         }
+        return onVerifyEmail(address, password);
       }
 
-      const login = await requestAuth("/_agent-native/auth/login", {
+      const login = await requestAuth("/_agent-native/auth/ba/sign-in/email", {
         email: address,
         password,
       });
@@ -152,7 +157,20 @@ export function CredentialsForm({
         leavingPage = true;
         return enterApp(resume);
       }
-      if (isEmailNotVerified(login)) return onVerifyEmail(address, password);
+      if (isEmailNotVerified(login)) {
+        const sent = await requestAuth(
+          "/_agent-native/auth/ba/email-otp/send-verification-otp",
+          { email: address, type: "email-verification" },
+        );
+        if (!sent.ok)
+          return fail(
+            authErrorMessage(
+              sent.data,
+              "We couldn't send the verification code. Try again shortly.",
+            ),
+          );
+        return onVerifyEmail(address, password);
+      }
       return fail(
         authErrorMessage(
           login.data,
@@ -163,7 +181,9 @@ export function CredentialsForm({
       );
     } catch {
       // coercion-ok: a network failure is reported to the student, not thrown.
-      return fail("Can't reach the server. Check your connection and try again.");
+      return fail(
+        "Can't reach the server. Check your connection and try again.",
+      );
     } finally {
       // After a successful sign-in the page navigates away; keep the button busy
       // so a second click can't submit again.

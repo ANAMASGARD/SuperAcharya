@@ -4,6 +4,9 @@
     "firstRun": "off"
   },
   "doctor": {
-    "failOnBuild": false
+    "failOnBuild": false,
+    "dbToolScopingDenylist": {
+      "auth_rate_limits": "Internal authentication abuse counters; never expose through agent database tools."
+    }
   }
 }
